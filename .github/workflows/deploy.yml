@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - gravity-gardener/**
+      - paper-storm/**
+      - site/**
       - .github/workflows/deploy.yml
   workflow_dispatch:
 
@@ -25,14 +27,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Install dependencies
-        run: cd gravity-gardener && npm ci
-      - name: Build
-        run: cd gravity-gardener && npm run build
+
+      - name: Build gravity-gardener
+        run: |
+          cd gravity-gardener
+          npm ci
+          npm run build
+
+      - name: Build paper-storm
+        run: |
+          cd paper-storm
+          npm ci
+          npm run build
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -r site/. _site/
+          mkdir -p _site/gravity-gardener _site/paper-storm
+          cp -r gravity-gardener/dist/. _site/gravity-gardener/
+          cp -r paper-storm/dist/. _site/paper-storm/
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: gravity-gardener/dist
+          path: _site
 
   deploy:
     needs: build

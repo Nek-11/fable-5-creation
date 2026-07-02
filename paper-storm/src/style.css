@@ -1,0 +1,350 @@
+:root {
+  --paper: #f6f1e3;
+  --paper-2: #efe7d3;
+  --ink: #35322c;
+  --ink-soft: #6b655a;
+  --accent: #e2593b;
+  --soak: #5b7f9e;
+  --shadow: rgba(60, 50, 30, 0.28);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #b8d4e3;
+  font-family: "Patrick Hand", "Comic Sans MS", cursive;
+  color: var(--ink);
+}
+
+#app canvas {
+  display: block;
+  position: fixed;
+  inset: 0;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------- paper scraps (HUD) ---------- */
+
+.scrap {
+  position: absolute;
+  background: var(--paper);
+  padding: 8px 16px 10px;
+  box-shadow: 2px 4px 0 var(--shadow);
+  clip-path: polygon(
+    1% 8%, 6% 0%, 30% 3%, 55% 0%, 78% 4%, 97% 1%, 100% 20%,
+    98% 55%, 100% 82%, 94% 100%, 60% 97%, 34% 100%, 8% 96%, 0% 88%, 2% 40%
+  );
+}
+
+.scrap .label {
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+#dist-card {
+  top: 18px;
+  left: 20px;
+  transform: rotate(-2deg);
+  min-width: 150px;
+}
+
+#dist-card .big {
+  font-family: "Caveat", cursive;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+#dist-card small,
+#best-card small {
+  font-size: 0.5em;
+  color: var(--ink-soft);
+}
+
+#best-card {
+  top: 18px;
+  right: 20px;
+  transform: rotate(1.5deg);
+  text-align: right;
+}
+
+#best-card .mid {
+  font-family: "Caveat", cursive;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+#gauges {
+  bottom: 20px;
+  right: 20px;
+  transform: rotate(1deg);
+  width: 190px;
+}
+
+.gauge {
+  margin-top: 4px;
+}
+
+.bar {
+  height: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 6px 8px 7px 6px / 8px 6px 8px 7px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  width: 40%;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+  transition: width 90ms linear;
+}
+
+.fill.alt {
+  background: #7fa86b;
+}
+
+/* wetness */
+#wet-card {
+  bottom: 20px;
+  left: 20px;
+  transform: rotate(-1.5deg);
+  text-align: center;
+}
+
+#wet-strip {
+  width: 34px;
+  height: 90px;
+  margin: 4px auto 0;
+  border: 2px solid var(--ink);
+  border-radius: 5px 7px 6px 5px / 7px 5px 7px 6px;
+  background: var(--paper-2);
+  position: relative;
+  overflow: hidden;
+}
+
+#wet-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0%;
+  background: linear-gradient(to top, var(--soak), #86a8c5);
+  transition: height 150ms linear;
+}
+
+/* banners */
+#storm-banner,
+#bird-banner {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1deg);
+  background: var(--paper);
+  padding: 6px 22px;
+  font-family: "Caveat", cursive;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+  box-shadow: 2px 3px 0 var(--shadow);
+  animation: wobble 0.8s ease-in-out infinite alternate;
+}
+
+#bird-banner {
+  top: 70px;
+  color: var(--ink);
+}
+
+@keyframes wobble {
+  from {
+    transform: translateX(-50%) rotate(-1.5deg);
+  }
+  to {
+    transform: translateX(-50%) rotate(1.5deg);
+  }
+}
+
+#milestone {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Caveat", cursive;
+  font-size: 54px;
+  font-weight: 700;
+  color: var(--ink);
+  text-shadow: 2px 3px 0 rgba(246, 241, 227, 0.9);
+  animation: pop 1.6s ease-out forwards;
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5) rotate(-4deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1) rotate(2deg);
+  }
+  25% {
+    transform: translate(-50%, -50%) scale(1) rotate(-1deg);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -62%) scale(1) rotate(1deg);
+  }
+}
+
+/* ---------- full screens ---------- */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 40%, rgba(246, 241, 227, 0.15), rgba(60, 60, 70, 0.35));
+}
+
+.card {
+  position: relative;
+  background: var(--paper);
+  padding: 42px 56px 34px;
+  max-width: 560px;
+  text-align: center;
+  transform: rotate(-1.2deg);
+  box-shadow: 5px 9px 0 var(--shadow);
+  clip-path: polygon(
+    0.5% 4%, 4% 0%, 22% 2%, 47% 0%, 71% 2.5%, 96% 0.5%, 100% 7%,
+    99% 30%, 100% 56%, 98.5% 80%, 100% 93%, 95% 100%, 72% 98%,
+    48% 100%, 24% 97.5%, 4% 100%, 0% 92%, 1.5% 62%, 0% 33%
+  );
+}
+
+.card.crumpled {
+  transform: rotate(1.6deg);
+}
+
+.tape {
+  position: absolute;
+  width: 92px;
+  height: 26px;
+  background: rgba(228, 214, 167, 0.75);
+  box-shadow: 1px 2px 3px rgba(60, 50, 30, 0.2);
+  top: -12px;
+}
+
+.tape-l {
+  left: 28px;
+  transform: rotate(-8deg);
+}
+
+.tape-r {
+  right: 28px;
+  transform: rotate(6deg);
+}
+
+.card h1 {
+  font-family: "Caveat", cursive;
+  font-size: 74px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+#crash-title {
+  color: var(--accent);
+}
+
+.tagline {
+  margin-top: 8px;
+  font-size: 19px;
+  color: var(--ink-soft);
+}
+
+.howto {
+  margin: 22px 0 6px;
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.hints {
+  margin-top: 10px;
+  color: var(--ink-soft);
+}
+
+.key {
+  display: inline-block;
+  min-width: 26px;
+  padding: 1px 7px;
+  margin: 0 2px;
+  border: 2px solid var(--ink);
+  border-radius: 6px 7px 6px 7px / 7px 6px 7px 6px;
+  background: var(--paper-2);
+  box-shadow: 1px 2px 0 var(--shadow);
+  font-size: 16px;
+}
+
+.key.space {
+  padding: 1px 18px;
+}
+
+.press {
+  margin-top: 24px;
+  font-size: 20px;
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.result {
+  margin-top: 18px;
+}
+
+.res-line {
+  font-family: "Caveat", cursive;
+  font-size: 38px;
+  font-weight: 700;
+}
+
+.res-line.small {
+  font-size: 24px;
+  color: var(--ink-soft);
+}
+
+#new-best {
+  color: var(--accent);
+}

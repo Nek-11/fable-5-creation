@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paper Storm ✈️</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Patrick+Hand&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="ui">
+      <!-- In-flight HUD -->
+      <div id="hud" class="hidden">
+        <div id="dist-card" class="scrap">
+          <div class="label">distance</div>
+          <div class="big"><span id="dist">0</span><small> m</small></div>
+        </div>
+        <div id="best-card" class="scrap">
+          <div class="label">best</div>
+          <div class="mid"><span id="best">0</span><small> m</small></div>
+        </div>
+
+        <div id="gauges" class="scrap">
+          <div class="gauge">
+            <div class="label">speed</div>
+            <div class="bar"><div id="speed-fill" class="fill"></div></div>
+          </div>
+          <div class="gauge">
+            <div class="label">altitude</div>
+            <div class="bar"><div id="alt-fill" class="fill alt"></div></div>
+          </div>
+        </div>
+
+        <div id="wet-card" class="scrap">
+          <div class="label">soaked</div>
+          <div id="wet-strip"><div id="wet-fill"></div></div>
+        </div>
+
+        <div id="storm-banner" class="hidden">⚡ storm rolling in…</div>
+        <div id="bird-banner" class="hidden">✂ scissors-birds! dive!</div>
+        <div id="milestone" class="hidden"></div>
+      </div>
+
+      <!-- Start screen -->
+      <div id="start-screen" class="screen">
+        <div class="card">
+          <div class="tape tape-l"></div>
+          <div class="tape tape-r"></div>
+          <h1>Paper&nbsp;Storm</h1>
+          <p class="tagline">you are a paper airplane, thrown out of an office window.</p>
+          <div class="howto">
+            <div><span class="key">↑</span><span class="key">↓</span> pitch &nbsp;·&nbsp; <span class="key">←</span><span class="key">→</span> bank &amp; turn</div>
+            <div class="hints">
+              dive to gain speed — trade speed for altitude<br />
+              ride the <b>vent updrafts</b> · rain <b>soaks and sinks</b> you<br />
+              and whatever you do… avoid the <b>scissors-birds</b> ✂
+            </div>
+          </div>
+          <div class="press">press <span class="key space">space</span> to fly</div>
+        </div>
+      </div>
+
+      <!-- Crash screen -->
+      <div id="crash-screen" class="screen hidden">
+        <div class="card crumpled">
+          <div class="tape tape-l"></div>
+          <div class="tape tape-r"></div>
+          <h1 id="crash-title">Crumpled!</h1>
+          <p id="crash-reason" class="tagline"></p>
+          <div class="result">
+            <div class="res-line">flew <b><span id="crash-dist">0</span> m</b></div>
+            <div class="res-line small">best: <span id="crash-best">0</span> m <span id="new-best" class="hidden">— new best! ★</span></div>
+          </div>
+          <div class="press">press <span class="key space">space</span> to fold a new one</div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
