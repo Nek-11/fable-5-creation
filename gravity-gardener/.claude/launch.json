@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gravity-gardener",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5199", "--strictPort"],
+      "port": 5199,
+      "cwd": "/Users/nikitas/Desktop/Work/Code/fable-5-creation/gravity-gardener"
+    }
+  ]
+}

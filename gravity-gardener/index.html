@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gravity Gardener</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&family=Azeret+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #04060f;
+      --ink-soft: #0a1020;
+      --mint: #7dffd0;
+      --mint-deep: #2adfa8;
+      --aqua: #6ad6ff;
+      --rot: #ff3b57;
+      --rot-deep: #8f1029;
+      --gold: #ffd97a;
+      --text: #d8f5ea;
+      --text-dim: #7fa89a;
+      --glass: rgba(8, 14, 26, 0.55);
+      --glass-edge: rgba(125, 255, 208, 0.18);
+      --font-display: 'Comfortaa', system-ui, sans-serif;
+      --font-mono: 'Azeret Mono', ui-monospace, monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--ink);
+      color: var(--text);
+      font-family: var(--font-display);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #app canvas { display: block; }
+
+    /* ---------- shared overlay bits ---------- */
+    .overlay {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 30;
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 30%, rgba(15, 40, 45, 0.55), transparent 65%),
+        radial-gradient(ellipse 120% 100% at 50% 110%, rgba(8, 4, 20, 0.9), rgba(4, 6, 15, 0.82));
+      backdrop-filter: blur(3px);
+      transition: opacity 0.7s ease, visibility 0.7s;
+    }
+    .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .kicker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.55em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 18px;
+      animation: rise 1s 0.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    h1.title {
+      font-size: clamp(42px, 7.5vw, 92px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      line-height: 1.05;
+      text-align: center;
+      background: linear-gradient(115deg, #eafff6 10%, var(--mint) 40%, var(--aqua) 75%, #b39dff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 26px rgba(125, 255, 208, 0.28));
+      animation: rise 1s 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .subtitle {
+      margin-top: 20px;
+      max-width: 520px;
+      text-align: center;
+      font-size: 15px;
+      line-height: 1.75;
+      color: var(--text-dim);
+      animation: rise 1s 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    .subtitle em { color: var(--mint); font-style: normal; }
+    .subtitle b { color: var(--rot); font-weight: 400; }
+
+    .controls-grid {
+      margin-top: 34px;
+      display: flex; gap: 28px; flex-wrap: wrap; justify-content: center;
+      animation: rise 1s 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    .ctrl { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+    kbd {
+      font-family: var(--font-mono);
+      font-size: 11px; font-weight: 600;
+      color: var(--mint);
+      background: rgba(125, 255, 208, 0.07);
+      border: 1px solid rgba(125, 255, 208, 0.3);
+      border-bottom-width: 2px;
+      border-radius: 7px;
+      padding: 5px 9px;
+      min-width: 28px;
+      text-align: center;
+      box-shadow: 0 0 14px rgba(125, 255, 208, 0.1);
+    }
+
+    .btn {
+      margin-top: 42px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: 0.18em;
+      text-transform: lowercase;
+      color: var(--ink);
+      background: linear-gradient(120deg, var(--mint), var(--aqua));
+      border: none;
+      border-radius: 999px;
+      padding: 17px 58px;
+      cursor: pointer;
+      box-shadow: 0 0 0 1px rgba(125, 255, 208, 0.4), 0 0 34px rgba(125, 255, 208, 0.35), 0 0 90px rgba(106, 214, 255, 0.18);
+      transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.25s;
+      animation: rise 1s 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both, breathe 3.2s 1.8s ease-in-out infinite;
+    }
+    .btn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 0 0 1px rgba(125, 255, 208, 0.7), 0 0 50px rgba(125, 255, 208, 0.55), 0 0 130px rgba(106, 214, 255, 0.3);
+    }
+    .btn:active { transform: scale(0.98); }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(26px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes breathe {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(125,255,208,0.4), 0 0 34px rgba(125,255,208,0.35), 0 0 90px rgba(106,214,255,0.18); }
+      50% { box-shadow: 0 0 0 1px rgba(125,255,208,0.6), 0 0 48px rgba(125,255,208,0.5), 0 0 120px rgba(106,214,255,0.28); }
+    }
+
+    /* floating spores on overlays */
+    .spores { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .spores i {
+      position: absolute;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--mint);
+      box-shadow: 0 0 12px 2px rgba(125, 255, 208, 0.55);
+      opacity: 0;
+      animation: drift linear infinite;
+    }
+    @keyframes drift {
+      0% { transform: translateY(15vh) scale(0.6); opacity: 0; }
+      12% { opacity: 0.75; }
+      88% { opacity: 0.55; }
+      100% { transform: translateY(-105vh) scale(1.1); opacity: 0; }
+    }
+
+    /* ---------- end screens ---------- */
+    #end-overlay h1.title.win {
+      background: linear-gradient(115deg, #eafff6, var(--mint) 55%, var(--gold));
+      -webkit-background-clip: text; background-clip: text;
+    }
+    #end-overlay h1.title.lose {
+      background: linear-gradient(115deg, #ffd9de, var(--rot) 55%, #6d2bb0);
+      -webkit-background-clip: text; background-clip: text;
+      filter: drop-shadow(0 0 26px rgba(255, 59, 87, 0.3));
+    }
+    .stats {
+      margin-top: 26px;
+      display: flex; gap: 42px;
+      font-family: var(--font-mono);
+      animation: rise 1s 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    .stat { text-align: center; }
+    .stat .v { font-size: 30px; font-weight: 600; color: var(--mint); }
+    .stat.rot .v { color: var(--rot); }
+    .stat .k { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-dim); margin-top: 6px; }
+
+    /* ---------- HUD ---------- */
+    #hud {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+      font-family: var(--font-mono);
+    }
+    #hud.visible { opacity: 1; }
+
+    /* balance bar */
+    #balance {
+      position: absolute; top: 26px; left: 50%;
+      transform: translateX(-50%);
+      width: min(420px, 42vw);
+    }
+    #balance .track {
+      position: relative;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      overflow: hidden;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.5);
+    }
+    #bar-light {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 0%;
+      border-radius: 999px 0 0 999px;
+      background: linear-gradient(90deg, var(--mint-deep), var(--mint));
+      box-shadow: 0 0 16px rgba(125, 255, 208, 0.7);
+      transition: width 0.5s ease;
+    }
+    #bar-rot {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: 0%;
+      border-radius: 0 999px 999px 0;
+      background: linear-gradient(90deg, var(--rot), var(--rot-deep));
+      box-shadow: 0 0 16px rgba(255, 59, 87, 0.6);
+      transition: width 0.5s ease;
+    }
+    #balance .labels {
+      display: flex; justify-content: space-between;
+      margin-top: 7px;
+      font-size: 11px; font-weight: 600;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+    }
+    #pct-light { color: var(--mint); }
+    #pct-rot { color: var(--rot); }
+    #balance .goal {
+      position: absolute; top: -4px; bottom: -4px;
+      width: 2px; border-radius: 2px;
+      background: rgba(255, 217, 122, 0.75);
+      box-shadow: 0 0 8px rgba(255, 217, 122, 0.8);
+    }
+
+    /* seeds */
+    #seeds {
+      position: absolute; left: 30px; bottom: 30px;
+      display: flex; align-items: center; gap: 12px;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 999px;
+      padding: 13px 20px;
+      backdrop-filter: blur(10px);
+    }
+    #seeds .label { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-dim); }
+    #pods { display: flex; gap: 8px; }
+    .pod {
+      width: 15px; height: 15px; border-radius: 50%;
+      border: 1px solid rgba(125, 255, 208, 0.35);
+      position: relative;
+      transition: all 0.3s;
+    }
+    .pod.full {
+      background: radial-gradient(circle at 35% 30%, #eafff6, var(--mint) 55%, var(--mint-deep));
+      border-color: var(--mint);
+      box-shadow: 0 0 12px rgba(125, 255, 208, 0.8);
+      animation: podpulse 2.6s ease-in-out infinite;
+    }
+    .pod.charging { border-color: rgba(125, 255, 208, 0.6); }
+    @keyframes podpulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(125, 255, 208, 0.6); }
+      50% { box-shadow: 0 0 17px rgba(125, 255, 208, 1); }
+    }
+    #seeds kbd { margin-left: 4px; }
+
+    /* burst */
+    #burst {
+      position: absolute; right: 30px; bottom: 30px;
+      display: flex; align-items: center; gap: 14px;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 999px;
+      padding: 9px 20px 9px 10px;
+      backdrop-filter: blur(10px);
+    }
+    #burst-ring { width: 46px; height: 46px; transform: rotate(-90deg); }
+    #burst-ring .bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 3; }
+    #burst-ring .fg {
+      fill: none; stroke: var(--aqua); stroke-width: 3;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 5px rgba(106, 214, 255, 0.9));
+      transition: stroke-dashoffset 0.15s linear;
+    }
+    #burst.ready #burst-ring .fg { stroke: var(--mint); animation: ringglow 1.6s ease-in-out infinite; }
+    @keyframes ringglow {
+      0%, 100% { filter: drop-shadow(0 0 4px rgba(125,255,208,0.7)); }
+      50% { filter: drop-shadow(0 0 11px rgba(125,255,208,1)); }
+    }
+    #burst .info { display: flex; flex-direction: column; gap: 4px; }
+    #burst .label { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-dim); }
+    #burst .key-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--text-dim); }
+
+    /* top-left brand + clock */
+    #brand {
+      position: absolute; top: 26px; left: 30px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    #brand .name {
+      font-family: var(--font-display);
+      font-weight: 700; font-size: 15px;
+      letter-spacing: 0.14em;
+      color: var(--text);
+      text-shadow: 0 0 18px rgba(125, 255, 208, 0.4);
+    }
+    #clock { font-size: 11px; color: var(--text-dim); letter-spacing: 0.2em; }
+
+    /* mute */
+    #mute {
+      position: absolute; top: 26px; right: 30px;
+      pointer-events: auto;
+      cursor: pointer;
+      width: 40px; height: 40px;
+      display: grid; place-items: center;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 50%;
+      backdrop-filter: blur(10px);
+      color: var(--mint);
+      font-size: 15px;
+      transition: all 0.25s;
+    }
+    #mute:hover { box-shadow: 0 0 16px rgba(125, 255, 208, 0.3); }
+    #mute.muted { color: var(--text-dim); }
+
+    /* toasts */
+    #toast {
+      position: absolute; top: 88px; left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      font-size: 12px; letter-spacing: 0.22em;
+      padding: 10px 26px;
+      border-radius: 999px;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      backdrop-filter: blur(10px);
+      color: var(--text);
+      opacity: 0;
+      transition: opacity 0.45s, transform 0.45s;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.danger { color: #ffb9c4; border-color: rgba(255, 59, 87, 0.4); text-shadow: 0 0 12px rgba(255,59,87,0.6); }
+    #toast.good { color: #d2ffee; text-shadow: 0 0 12px rgba(125,255,208,0.6); }
+
+    @media (max-width: 980px) {
+      #balance { top: 72px; }
+    }
+
+    /* hint line */
+    #hint {
+      position: absolute; bottom: 104px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px; letter-spacing: 0.24em;
+      color: var(--text-dim);
+      text-shadow: 0 1px 10px rgba(0,0,0,0.9);
+      opacity: 0.85;
+      transition: opacity 0.6s;
+      white-space: nowrap;
+    }
+    #hint.faded { opacity: 0; }
+
+    /* pause veil */
+    #pause-veil {
+      position: fixed; inset: 0; z-index: 25;
+      display: grid; place-items: center;
+      background: rgba(4, 6, 15, 0.68);
+      backdrop-filter: blur(4px);
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+    #pause-veil.show { opacity: 1; visibility: visible; }
+    #pause-veil .word {
+      font-family: var(--font-display);
+      font-weight: 700; font-size: 34px; letter-spacing: 0.5em;
+      color: var(--mint);
+      text-shadow: 0 0 30px rgba(125, 255, 208, 0.5);
+    }
+
+    /* damage / burst flash vignette */
+    #flash {
+      position: fixed; inset: 0; z-index: 15;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #flash.burst {
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(125, 255, 208, 0.22) 100%);
+      animation: flashfade 0.7s ease-out;
+    }
+    #flash.hurt {
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 59, 87, 0.3) 100%);
+      animation: flashfade 0.8s ease-out;
+    }
+    @keyframes flashfade { 0% { opacity: 1; } 100% { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="brand">
+      <div class="name">gravity gardener</div>
+      <div id="clock">00:00</div>
+    </div>
+
+    <div id="balance">
+      <div class="track">
+        <div id="bar-light"></div>
+        <div id="bar-rot"></div>
+        <div class="goal" style="left: 70%"></div>
+      </div>
+      <div class="labels">
+        <span id="pct-light">0% alive</span>
+        <span id="pct-rot">0% rot</span>
+      </div>
+    </div>
+
+    <button id="mute" title="mute (M)">◉</button>
+
+    <div id="seeds">
+      <span class="label">seeds</span>
+      <div id="pods"></div>
+      <kbd>space</kbd>
+    </div>
+
+    <div id="burst" class="ready">
+      <svg id="burst-ring" viewBox="0 0 46 46">
+        <circle class="bg" cx="23" cy="23" r="19"></circle>
+        <circle class="fg" cx="23" cy="23" r="19" stroke-dasharray="119.4" stroke-dashoffset="0"></circle>
+      </svg>
+      <div class="info">
+        <span class="label">light burst</span>
+        <span class="key-row"><kbd>E</kbd> purge the rot</span>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="hint"></div>
+  </div>
+
+  <div id="flash"></div>
+
+  <div id="pause-veil"><div class="word">PAUSED</div></div>
+
+  <!-- Title screen -->
+  <div id="title-overlay" class="overlay">
+    <div class="spores" id="title-spores"></div>
+    <div class="kicker">a tiny planet needs you</div>
+    <h1 class="title">Gravity<br />Gardener</h1>
+    <p class="subtitle">
+      Walk the curve of a sleeping world. Plant <em>luminous flora</em> and watch their
+      spores arc through gravity to seed new blooms — before the creeping
+      <b>void rot</b> swallows everything.
+    </p>
+    <div class="controls-grid">
+      <div class="ctrl"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</div>
+      <div class="ctrl"><kbd>shift</kbd> run</div>
+      <div class="ctrl"><kbd>space</kbd> plant</div>
+      <div class="ctrl"><kbd>E</kbd> light burst</div>
+      <div class="ctrl"><kbd>drag</kbd> look</div>
+    </div>
+    <button class="btn" id="btn-start">begin the bloom</button>
+  </div>
+
+  <!-- End screen -->
+  <div id="end-overlay" class="overlay hidden">
+    <div class="spores" id="end-spores"></div>
+    <div class="kicker" id="end-kicker"></div>
+    <h1 class="title win" id="end-title"></h1>
+    <div class="stats">
+      <div class="stat"><div class="v" id="stat-time">0:00</div><div class="k">time</div></div>
+      <div class="stat"><div class="v" id="stat-blooms">0</div><div class="k">blooms</div></div>
+      <div class="stat rot"><div class="v" id="stat-purged">0</div><div class="k">rot purged</div></div>
+    </div>
+    <button class="btn" id="btn-restart">bloom again</button>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
