@@ -16,7 +16,7 @@ export class UI {
 
   showScreen(name) {
     for (const [k, el] of Object.entries(this.screens)) el.classList.toggle('hidden', k !== name);
-    this.hud.classList.toggle('hidden', name !== null);
+    this.hud.classList.add('hidden');
   }
 
   showHUD() {
@@ -28,9 +28,9 @@ export class UI {
     $('level-name').textContent = name;
   }
 
-  setMoths(have, need) {
-    $('moth-count').textContent = have;
-    $('moth-need').textContent = need;
+  setFish(have, need) {
+    $('fish-count').textContent = have;
+    $('fish-need').textContent = need;
   }
 
   setShriek(charges) {
@@ -42,6 +42,16 @@ export class UI {
     const fill = $('presence-fill');
     fill.style.width = `${Math.round(v * 100)}%`;
     fill.classList.toggle('hot', v > 0.66);
+  }
+
+  setWayOut(dist) {
+    const el = $('wayout');
+    if (dist == null) {
+      el.classList.add('hidden');
+    } else {
+      el.classList.remove('hidden');
+      el.textContent = `the way out · ${Math.round(dist)}m`;
+    }
   }
 
   setHunted(on) {

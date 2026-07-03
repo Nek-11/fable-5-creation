@@ -1,63 +1,73 @@
 export const CONFIG = {
   // world scale
-  CELL: 4, // corridor width in meters
-  WALL_H: 5.2,
-  EYE: 1.6,
+  MAXY: 26, // swimmable ceiling
+  PLAYER_R: 0.5,
 
-  // player
-  PLAYER_R: 0.42,
-  WALK: 3.4,
-  RUN: 5.7,
-  STRIDE: 2.1, // meters between footsteps
+  // swimming
+  SWIM: 4.0,
+  BURST: 7.8,
+  STROKE_DIST: 3.0, // meters between audible strokes
 
   // echo
-  PING_CD: 0.75,
+  PING_CD: 0.7,
 
   // shriek (stun)
-  SHRIEK_RADIUS: 11,
+  SHRIEK_RADIUS: 12,
   SHRIEK_STUN: 5.5,
   SHRIEK_MAX: 2,
   SHRIEK_REGEN: 24, // seconds per charge
 
   // presence: how "loud" you've been lately; scales creature hearing
-  PRESENCE: { PING: 0.2, SHRIEK: 0.45, RUN: 0.12, DECAY: 0.05 },
+  PRESENCE: { PING: 0.2, SHRIEK: 0.45, BURST: 0.11, DECAY: 0.05 },
 
   // noise event radii (meters, before presence multiplier)
-  NOISE: { PING: 24, STEP_WALK: 3.5, STEP_RUN: 10, SHRIEK: 40 },
+  NOISE: { PING: 26, STROKE_SLOW: 4, STROKE_FAST: 11, SHRIEK: 42 },
 
   // gate beacon ping interval once unlocked
-  BEACON_INTERVAL: 5,
+  BEACON_INTERVAL: 4,
 
   LEVELS: [
     {
-      name: 'i · the threshold',
-      grid: 13,
-      crawlers: 1,
-      stalkers: 0,
-      moths: 1,
-      braid: 0.14,
-      chambers: 2,
-      flavor: 'the passage narrows. something below answers your echo.',
+      name: 'i · the kelp garden',
+      radius: 40,
+      lurkers: 1,
+      wraiths: 0,
+      fish: 2,
+      kelp: 150,
+      grass: 260,
+      coral: 90,
+      anemones: 34,
+      pillars: 11,
+      snow: 3000,
+      flavor: 'the kelp fades behind you. something big just moved in the dark below.',
     },
     {
-      name: 'ii · the warrens',
-      grid: 17,
-      crawlers: 2,
-      stalkers: 1,
-      moths: 2,
-      braid: 0.12,
-      chambers: 3,
-      flavor: 'warm air rises from the deep. the things here sing back in red.',
+      name: 'ii · the black reef',
+      radius: 48,
+      lurkers: 2,
+      wraiths: 1,
+      fish: 3,
+      kelp: 110,
+      grass: 200,
+      coral: 140,
+      anemones: 44,
+      pillars: 17,
+      snow: 3400,
+      flavor: 'the reef grows strange and sharp down here. red songs answer yours.',
     },
     {
-      name: 'iii · the deep',
-      grid: 21,
-      crawlers: 3,
-      stalkers: 2,
-      moths: 3,
-      braid: 0.1,
-      chambers: 4,
-      flavor: 'you can smell the morning somewhere above the stone.',
+      name: 'iii · the abyss mouth',
+      radius: 54,
+      lurkers: 2,
+      wraiths: 2,
+      fish: 4,
+      kelp: 60,
+      grass: 140,
+      coral: 170,
+      anemones: 56,
+      pillars: 23,
+      snow: 3800,
+      flavor: 'above you, impossibly far, hangs a ghost of moonlight.',
     },
   ],
 };
