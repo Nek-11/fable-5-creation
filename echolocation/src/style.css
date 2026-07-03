@@ -1,0 +1,286 @@
+:root {
+  --ink: #d8d2c4;
+  --dim: #6f6a5e;
+  --echo: #6fe3e0;
+  --gold: #e8c06a;
+  --blood: #b03a36;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: var(--ink);
+  font-family: "IM Fell English", serif;
+  user-select: none;
+}
+
+#app,
+#app canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+}
+
+/* permanent darkness pressing in from the edges */
+#vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.55) 78%, rgba(0, 0, 0, 0.92) 100%);
+  z-index: 5;
+}
+
+body.hunted #vignette {
+  animation: hunted-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes hunted-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 120px rgba(140, 20, 16, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 160px rgba(140, 20, 16, 0.45);
+  }
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------- HUD ---------- */
+#hud > div {
+  position: absolute;
+}
+
+#level-name {
+  top: 18px;
+  left: 22px;
+  font-variant: small-caps;
+  letter-spacing: 0.14em;
+  font-size: 0.95rem;
+  color: var(--dim);
+}
+
+#moth-hud {
+  top: 16px;
+  right: 22px;
+  font-size: 1.05rem;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
+
+#moth-hud .glyph {
+  text-shadow: 0 0 8px rgba(232, 192, 106, 0.7);
+}
+
+#shriek-hud {
+  top: 44px;
+  right: 22px;
+  font-size: 0.95rem;
+  color: var(--dim);
+}
+
+#shriek-hud .label {
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
+  margin-right: 6px;
+  font-size: 0.8rem;
+}
+
+.pip {
+  color: #2c2a25;
+  margin-left: 2px;
+  transition: color 0.4s ease, text-shadow 0.4s ease;
+}
+
+.pip.ready {
+  color: var(--gold);
+  text-shadow: 0 0 7px rgba(232, 192, 106, 0.6);
+}
+
+#presence-wrap {
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 190px;
+  height: 4px;
+  background: rgba(216, 210, 196, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+#presence-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--echo);
+  border-radius: 2px;
+  transition: width 0.15s linear, background 0.3s ease;
+}
+
+#presence-fill.hot {
+  background: var(--blood);
+  box-shadow: 0 0 8px rgba(176, 58, 54, 0.8);
+}
+
+#banner {
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 80vw;
+  text-align: center;
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--ink);
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.9), 0 0 6px rgba(111, 227, 224, 0.25);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  white-space: nowrap;
+}
+
+#banner.show {
+  opacity: 1;
+}
+
+#hint {
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.82rem;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ---------- Screens ---------- */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(4, 8, 9, 0.55), rgba(0, 0, 0, 0.92));
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.panel {
+  max-width: 620px;
+  padding: 40px 48px;
+  text-align: center;
+}
+
+h1 {
+  font-family: "IM Fell English SC", serif;
+  font-weight: 400;
+  font-size: clamp(2.6rem, 8vw, 4.4rem);
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  text-shadow: 0 0 24px rgba(111, 227, 224, 0.35), 0 0 60px rgba(111, 227, 224, 0.15);
+  animation: flicker 6s infinite;
+}
+
+h1 span {
+  color: var(--echo);
+}
+
+h2 {
+  font-family: "IM Fell English SC", serif;
+  font-weight: 400;
+  font-size: clamp(1.7rem, 5vw, 2.6rem);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 18px rgba(111, 227, 224, 0.25);
+}
+
+@keyframes flicker {
+  0%,
+  91%,
+  93%,
+  95%,
+  100% {
+    opacity: 1;
+  }
+  92%,
+  94% {
+    opacity: 0.65;
+  }
+}
+
+.tag {
+  margin-top: 14px;
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+.rules {
+  margin-top: 30px;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: #a49e90;
+}
+
+.rules div {
+  margin-bottom: 12px;
+}
+
+.rules b {
+  color: var(--ink);
+}
+
+.gold {
+  color: var(--gold);
+}
+
+.press {
+  margin-top: 36px;
+  font-variant: small-caps;
+  letter-spacing: 0.22em;
+  font-size: 0.85rem;
+  color: var(--echo);
+  animation: breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.panel.dead h1 {
+  color: var(--blood);
+  text-shadow: 0 0 26px rgba(176, 58, 54, 0.5);
+}
+
+.panel.dead .press {
+  color: var(--ink);
+}
+
+.panel.win h1 {
+  color: #f3ead2;
+  text-shadow: 0 0 40px rgba(243, 234, 210, 0.7);
+}
+
+#win-screen {
+  background: radial-gradient(ellipse at center, rgba(40, 44, 40, 0.75), rgba(2, 3, 3, 0.95));
+}

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Echolocation 🦇</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦇</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="vignette"></div>
+
+    <div id="ui">
+      <!-- In-game HUD -->
+      <div id="hud" class="hidden">
+        <div id="level-name"></div>
+        <div id="moth-hud" title="freed moths / needed to open the way">
+          <span class="glyph">✦</span> <span id="moth-count">0</span>/<span id="moth-need">1</span>
+        </div>
+        <div id="shriek-hud" title="shriek charges — stuns nearby creatures">
+          <span class="label">shriek</span>
+          <span class="pip" id="pip0">◈</span><span class="pip" id="pip1">◈</span>
+        </div>
+        <div id="presence-wrap" title="presence — how loud you've been">
+          <div id="presence-fill"></div>
+        </div>
+        <div id="banner" class="hidden"></div>
+        <div id="hint">click — echo · wasd — move · shift — run <i>(loud)</i> · e — shriek <i>(stuns)</i></div>
+      </div>
+
+      <!-- Title -->
+      <div id="title-screen" class="screen">
+        <div class="panel">
+          <h1>Echo<span>location</span></h1>
+          <p class="tag">you are blind. the cave is not empty.</p>
+          <div class="rules">
+            <div><b>click</b> to echo — sound paints the world, briefly.</div>
+            <div><b>everything down here hears you.</b> the louder you are, the faster it comes.</div>
+            <div>you cannot fight. <b>run</b>, hide in silence, or <b>shriek</b> to stun and slip away.</div>
+            <div>free the trapped <span class="gold">✦ moths</span> — their soft glow answers you,<br />and only they can open the way deeper.</div>
+          </div>
+          <div class="press">click to wake in the dark</div>
+        </div>
+      </div>
+
+      <!-- Between levels -->
+      <div id="inter-screen" class="screen hidden">
+        <div class="panel">
+          <h2 id="inter-title">You descend.</h2>
+          <p id="inter-flavor" class="tag"></p>
+          <div class="press">click to keep going down</div>
+        </div>
+      </div>
+
+      <!-- Paused (pointer lock lost) -->
+      <div id="pause-screen" class="screen hidden">
+        <div class="panel">
+          <h2>you stand very still</h2>
+          <p class="tag">the dark waits with you.</p>
+          <div class="press">click to continue</div>
+        </div>
+      </div>
+
+      <!-- Death -->
+      <div id="death-screen" class="screen hidden">
+        <div class="panel dead">
+          <h1>Taken</h1>
+          <p id="death-reason" class="tag"></p>
+          <div class="press">click to try again — the cave remembers its shape</div>
+        </div>
+      </div>
+
+      <!-- Win -->
+      <div id="win-screen" class="screen hidden">
+        <div class="panel win">
+          <h1>Light</h1>
+          <p class="tag">
+            you crawl out of the mouth of the cave into a pale morning.<br />
+            the moths spiral up past you and scatter into the sky.<br />
+            for the first time, you don't need to make a sound to see.
+          </p>
+          <div class="press">click to descend again</div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -6,6 +6,7 @@ on:
     paths:
       - gravity-gardener/**
       - paper-storm/**
+      - echolocation/**
       - site/**
       - .github/workflows/deploy.yml
   workflow_dispatch:
@@ -40,13 +41,20 @@ jobs:
           npm ci
           npm run build
 
+      - name: Build echolocation
+        run: |
+          cd echolocation
+          npm ci
+          npm run build
+
       - name: Assemble site
         run: |
           mkdir -p _site
           cp -r site/. _site/
-          mkdir -p _site/gravity-gardener _site/paper-storm
+          mkdir -p _site/gravity-gardener _site/paper-storm _site/echolocation
           cp -r gravity-gardener/dist/. _site/gravity-gardener/
           cp -r paper-storm/dist/. _site/paper-storm/
+          cp -r echolocation/dist/. _site/echolocation/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
