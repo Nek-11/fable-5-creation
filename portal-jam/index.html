@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal Jam</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏀</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Chivo+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #08090e;
+      --ink-2: #10131b;
+      --cyan: #45f2ff;
+      --cyan-deep: #0e9fb0;
+      --magenta: #ff3ea5;
+      --magenta-deep: #a3155f;
+      --ball: #ff8c3b;
+      --gold: #ffd166;
+      --text: #f3ede2;
+      --text-dim: #8a8d99;
+      --glass: rgba(10, 13, 20, 0.6);
+      --glass-edge: rgba(69, 242, 255, 0.16);
+      --font-display: 'Big Shoulders Display', system-ui, sans-serif;
+      --font-mono: 'Chivo Mono', ui-monospace, monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--ink);
+      color: var(--text);
+      font-family: var(--font-mono);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #app canvas { display: block; }
+
+    /* ================= overlays ================= */
+    .overlay {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 30;
+      background:
+        radial-gradient(ellipse 70% 55% at 50% 24%, rgba(255, 62, 165, 0.10), transparent 60%),
+        radial-gradient(ellipse 80% 60% at 50% 90%, rgba(69, 242, 255, 0.08), transparent 55%),
+        rgba(6, 7, 11, 0.88);
+      backdrop-filter: blur(5px);
+      transition: opacity 0.6s ease, visibility 0.6s;
+    }
+    .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .kicker {
+      font-size: 11px;
+      letter-spacing: 0.6em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+      animation: rise 0.9s 0.05s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    h1.title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: clamp(64px, 13vw, 170px);
+      line-height: 0.86;
+      letter-spacing: 0.015em;
+      text-transform: uppercase;
+      text-align: center;
+      animation: rise 0.9s 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    h1.title .w1 {
+      display: block;
+      background: linear-gradient(100deg, #d8fbff 5%, var(--cyan) 60%, #7ab8ff);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 30px rgba(69, 242, 255, 0.35));
+    }
+    h1.title .w2 {
+      display: block;
+      background: linear-gradient(100deg, #ffe3f1 5%, var(--magenta) 55%, var(--ball) 95%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 30px rgba(255, 62, 165, 0.35));
+      margin-left: 0.9em;
+    }
+
+    .subtitle {
+      margin-top: 26px;
+      max-width: 560px;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text-dim);
+      animation: rise 0.9s 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      padding: 0 20px;
+    }
+    .subtitle em { color: var(--cyan); font-style: normal; }
+    .subtitle b { color: var(--magenta); font-weight: 400; }
+    .subtitle strong { color: var(--ball); font-weight: 400; }
+
+    .controls-grid {
+      margin-top: 30px;
+      display: flex; gap: 26px; flex-wrap: wrap; justify-content: center;
+      animation: rise 0.9s 0.46s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      padding: 0 16px;
+    }
+    .ctrl { display: flex; align-items: center; gap: 9px; font-size: 11.5px; color: var(--text-dim); }
+    kbd {
+      font-family: var(--font-mono);
+      font-size: 10.5px; font-weight: 600;
+      color: var(--cyan);
+      background: rgba(69, 242, 255, 0.06);
+      border: 1px solid rgba(69, 242, 255, 0.3);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      padding: 4px 8px;
+      min-width: 26px;
+      text-align: center;
+    }
+
+    /* level chips on title */
+    #level-chips {
+      margin-top: 34px;
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      animation: rise 0.9s 0.58s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    .chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 999px;
+      padding: 8px 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip:hover:not(.locked) { color: var(--cyan); border-color: rgba(69, 242, 255, 0.5); transform: translateY(-2px); }
+    .chip.locked { opacity: 0.32; cursor: not-allowed; }
+    .chip.done { color: var(--gold); border-color: rgba(255, 209, 102, 0.35); }
+
+    .btn {
+      margin-top: 36px;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink);
+      background: linear-gradient(115deg, var(--cyan), #9ef7ff 50%, var(--magenta) 130%);
+      border: none;
+      border-radius: 4px;
+      padding: 16px 62px;
+      cursor: pointer;
+      transform: skewX(-8deg);
+      box-shadow: 0 0 0 1px rgba(69, 242, 255, 0.5), 0 0 36px rgba(69, 242, 255, 0.3), 8px 8px 0 rgba(255, 62, 165, 0.32);
+      transition: transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.2s;
+      animation: rise 0.9s 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    .btn > span { display: inline-block; transform: skewX(8deg); }
+    .btn:hover {
+      transform: skewX(-8deg) scale(1.05);
+      box-shadow: 0 0 0 1px rgba(69, 242, 255, 0.8), 0 0 54px rgba(69, 242, 255, 0.5), 10px 10px 0 rgba(255, 62, 165, 0.5);
+    }
+    .btn:active { transform: skewX(-8deg) scale(0.97); }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ================= level-complete / end ================= */
+    #done-rating {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: clamp(54px, 9vw, 110px);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      background: linear-gradient(100deg, #fff5d6, var(--gold) 55%, var(--ball));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 28px rgba(255, 209, 102, 0.35));
+      animation: slam 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+    }
+    @keyframes slam {
+      from { opacity: 0; transform: scale(1.7); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .stats {
+      margin-top: 24px;
+      display: flex; gap: 44px;
+      animation: rise 0.8s 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    .stat { text-align: center; }
+    .stat .v { font-family: var(--font-display); font-weight: 800; font-size: 40px; color: var(--cyan); }
+    .stat.hot .v { color: var(--magenta); }
+    .stat.gold .v { color: var(--gold); }
+    .stat .k { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-dim); margin-top: 4px; }
+
+    .btn-row { display: flex; gap: 18px; align-items: center; }
+    .btn.ghost {
+      background: transparent;
+      color: var(--cyan);
+      box-shadow: 0 0 0 1px rgba(69, 242, 255, 0.4);
+      font-size: 16px;
+      padding: 14px 34px;
+    }
+    .btn.ghost:hover { box-shadow: 0 0 0 1px rgba(69, 242, 255, 0.9), 0 0 30px rgba(69, 242, 255, 0.25); }
+
+    /* ================= HUD ================= */
+    #hud {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0;
+      transition: opacity 0.7s ease;
+    }
+    #hud.visible { opacity: 1; }
+
+    #brand {
+      position: absolute; top: 24px; left: 28px;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    #brand .name {
+      font-family: var(--font-display);
+      font-weight: 800; font-size: 21px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    #brand .name .c { color: var(--cyan); }
+    #brand .name .m { color: var(--magenta); }
+    #level-label { font-size: 10.5px; color: var(--text-dim); letter-spacing: 0.24em; text-transform: uppercase; }
+
+    #scoreline {
+      position: absolute; top: 24px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; align-items: center; gap: 18px;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 999px;
+      padding: 10px 26px;
+      backdrop-filter: blur(10px);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+    }
+    #scoreline .shots { color: var(--text); font-weight: 600; }
+    #scoreline .divider { color: var(--text-dim); opacity: 0.5; }
+    #scoreline .par { color: var(--text-dim); }
+    #scoreline .shots b { color: var(--ball); font-weight: 600; }
+
+    #mute {
+      position: absolute; top: 24px; right: 28px;
+      pointer-events: auto;
+      cursor: pointer;
+      width: 40px; height: 40px;
+      display: grid; place-items: center;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 50%;
+      backdrop-filter: blur(10px);
+      color: var(--cyan);
+      font-size: 14px;
+      transition: all 0.25s;
+    }
+    #mute:hover { box-shadow: 0 0 16px rgba(69, 242, 255, 0.3); }
+    #mute.muted { color: var(--text-dim); }
+
+    /* portal status bottom-left */
+    #portal-status {
+      position: absolute; left: 28px; bottom: 26px;
+      display: flex; align-items: center; gap: 13px;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 999px;
+      padding: 12px 20px;
+      backdrop-filter: blur(10px);
+    }
+    #portal-status .label { font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--text-dim); }
+    .pdot {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.25);
+      transition: all 0.3s;
+    }
+    .pdot.a.on {
+      background: radial-gradient(circle at 35% 30%, #d8fbff, var(--cyan) 60%);
+      border-color: var(--cyan);
+      box-shadow: 0 0 12px rgba(69, 242, 255, 0.9);
+    }
+    .pdot.b.on {
+      background: radial-gradient(circle at 35% 30%, #ffe3f1, var(--magenta) 60%);
+      border-color: var(--magenta);
+      box-shadow: 0 0 12px rgba(255, 62, 165, 0.9);
+    }
+
+    #keys {
+      position: absolute; right: 28px; bottom: 26px;
+      display: flex; gap: 18px;
+      font-size: 10.5px; color: var(--text-dim);
+      letter-spacing: 0.08em;
+      align-items: center;
+    }
+    #keys kbd { font-size: 9.5px; padding: 3px 6px; }
+
+    #toast {
+      position: absolute; top: 86px; left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      font-size: 12px; letter-spacing: 0.24em;
+      text-transform: uppercase;
+      padding: 10px 26px;
+      border-radius: 999px;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      backdrop-filter: blur(10px);
+      color: var(--text);
+      opacity: 0;
+      transition: opacity 0.4s, transform 0.4s;
+      white-space: nowrap;
+      max-width: 90vw;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.hot { color: #ffd9ec; border-color: rgba(255, 62, 165, 0.45); text-shadow: 0 0 12px rgba(255, 62, 165, 0.7); }
+    #toast.cool { color: #d9fbff; text-shadow: 0 0 12px rgba(69, 242, 255, 0.7); }
+    #toast.gold { color: #fff0c9; border-color: rgba(255, 209, 102, 0.45); text-shadow: 0 0 14px rgba(255, 209, 102, 0.8); }
+
+    #hint {
+      position: absolute; bottom: 96px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px; letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-shadow: 0 1px 10px rgba(0,0,0,0.9);
+      opacity: 0.9;
+      transition: opacity 0.5s;
+      white-space: nowrap;
+      max-width: 92vw;
+      text-align: center;
+    }
+    #hint.faded { opacity: 0; }
+
+    /* score flash */
+    #flash {
+      position: fixed; inset: 0; z-index: 15;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #flash.score {
+      background: radial-gradient(ellipse at center, transparent 35%, rgba(255, 209, 102, 0.2) 100%);
+      animation: flashfade 0.8s ease-out;
+    }
+    @keyframes flashfade { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+    /* scanline-ish grain for atmosphere */
+    #grain {
+      position: fixed; inset: -50%;
+      z-index: 40; pointer-events: none;
+      opacity: 0.05;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      animation: grain 0.9s steps(4) infinite;
+    }
+    @keyframes grain {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-4%, 3%); }
+      50% { transform: translate(3%, -4%); }
+      75% { transform: translate(-3%, -3%); }
+      100% { transform: translate(4%, 3%); }
+    }
+
+    @media (max-width: 760px) {
+      #keys { display: none; }
+      #scoreline { top: auto; bottom: 26px; }
+      #portal-status { bottom: 84px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="brand">
+      <div class="name"><span class="c">portal</span>&nbsp;<span class="m">jam</span></div>
+      <div id="level-label">level 01 — warm up</div>
+    </div>
+
+    <div id="scoreline">
+      <span class="shots">SHOTS <b id="shots-n">0</b></span>
+      <span class="divider">/</span>
+      <span class="par">PAR <span id="par-n">1</span></span>
+    </div>
+
+    <button id="mute" title="mute (M)">◉</button>
+
+    <div id="portal-status">
+      <span class="label">portals</span>
+      <div class="pdot a" id="pdot-a"></div>
+      <div class="pdot b" id="pdot-b"></div>
+    </div>
+
+    <div id="keys">
+      <span><kbd>drag ball</kbd> shoot</span>
+      <span><kbd>click panel</kbd> portal</span>
+      <span><kbd>R</kbd> ball</span>
+      <span><kbd>C</kbd> clear</span>
+    </div>
+
+    <div id="toast"></div>
+    <div id="hint"></div>
+  </div>
+
+  <div id="flash"></div>
+  <div id="grain"></div>
+
+  <!-- Title screen -->
+  <div id="title-overlay" class="overlay">
+    <div class="kicker">midnight gym · aperture division</div>
+    <h1 class="title"><span class="w1">Portal</span><span class="w2">Jam</span></h1>
+    <p class="subtitle">
+      The hoop is unreachable. Good thing you brought the <em>portal gun</em> to practice.
+      Click the light panels to link <em>cyan</em> and <b>magenta</b> rifts, then
+      drag the <strong>ball</strong> back and let it fly — momentum carries through.
+    </p>
+    <div class="controls-grid">
+      <div class="ctrl"><kbd>drag ball</kbd> aim &amp; shoot</div>
+      <div class="ctrl"><kbd>click</kbd> place portal</div>
+      <div class="ctrl"><kbd>drag space</kbd> orbit</div>
+      <div class="ctrl"><kbd>R</kbd> reset ball</div>
+      <div class="ctrl"><kbd>C</kbd> clear portals</div>
+    </div>
+    <div id="level-chips"></div>
+    <button class="btn" id="btn-start"><span>tip off</span></button>
+  </div>
+
+  <!-- Level complete -->
+  <div id="done-overlay" class="overlay hidden">
+    <div class="kicker" id="done-kicker">level complete</div>
+    <div id="done-rating">Buckets!</div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="done-shots">1</div><div class="k">shots</div></div>
+      <div class="stat"><div class="v" id="done-par">1</div><div class="k">par</div></div>
+      <div class="stat gold"><div class="v" id="done-best">—</div><div class="k">best</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn ghost" id="btn-replay"><span>run it back</span></button>
+      <button class="btn" id="btn-next"><span>next level</span></button>
+    </div>
+  </div>
+
+  <!-- End screen -->
+  <div id="end-overlay" class="overlay hidden">
+    <div class="kicker">season over</div>
+    <h1 class="title" style="font-size: clamp(52px, 9vw, 120px);"><span class="w2">Hall of</span><span class="w1">Rifts</span></h1>
+    <div class="stats">
+      <div class="stat"><div class="v" id="end-shots">0</div><div class="k">total shots</div></div>
+      <div class="stat"><div class="v" id="end-par">0</div><div class="k">course par</div></div>
+      <div class="stat hot"><div class="v" id="end-swish">0</div><div class="k">swishes</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="btn-again"><span>run the gauntlet again</span></button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
