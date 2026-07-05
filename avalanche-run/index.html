@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avalanche Run 🏂</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏂</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="whiteout"></div>
+
+    <div id="ui">
+      <!-- In-run HUD -->
+      <div id="hud" class="hidden">
+        <div id="dist-card" class="plate">
+          <div class="label">distance</div>
+          <div class="big"><span id="dist">0</span><small> m</small></div>
+        </div>
+        <div id="best-card" class="plate">
+          <div class="label">best</div>
+          <div class="mid"><span id="best">0</span><small> m</small></div>
+        </div>
+
+        <div id="speed-card" class="plate">
+          <div class="label">speed</div>
+          <div class="bar"><div id="speed-fill" class="fill"></div></div>
+        </div>
+
+        <div id="gap-card" class="plate">
+          <div class="label">⚠ avalanche</div>
+          <div class="bar"><div id="gap-fill" class="fill gap"></div></div>
+        </div>
+
+        <div id="trick-pop" class="hidden"></div>
+        <div id="milestone" class="hidden"></div>
+      </div>
+
+      <!-- Start screen -->
+      <div id="start-screen" class="screen">
+        <div class="card">
+          <div class="badge">⚠ AVALANCHE WARNING · LEVEL 5</div>
+          <h1>Avalanche<br />Run</h1>
+          <p class="tagline">the whole mountain is coming down. outride it.</p>
+          <div class="howto">
+            <div class="row"><span class="key">←</span><span class="key">→</span> carve &nbsp;·&nbsp; <span class="key">↓</span> tuck for speed &nbsp;·&nbsp; <span class="key">space</span> jump</div>
+            <div class="hints">
+              spin in the air with <b>← →</b> — land a <b>360</b> for a burst of speed<br />
+              trees and rocks won't kill you… but the <b>wall of snow behind you</b> will
+            </div>
+          </div>
+          <div class="press">press <span class="key space">space</span> to drop in</div>
+        </div>
+      </div>
+
+      <!-- Death screen -->
+      <div id="death-screen" class="screen hidden">
+        <div class="card">
+          <div class="badge buried">☃ BURIED</div>
+          <h1>Swallowed<br />whole.</h1>
+          <p class="tagline">the mountain always wins. eventually.</p>
+          <div class="result">
+            <div class="res-line">outran it for <b><span id="death-dist">0</span> m</b></div>
+            <div class="res-line small">best: <span id="death-best">0</span> m <span id="new-best" class="hidden">— new best! ★</span></div>
+          </div>
+          <div class="press">press <span class="key space">space</span> to dig out &amp; drop again</div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
