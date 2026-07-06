@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PHYS } from './config.js';
+import { PHYS, BOUNCE } from './config.js';
 
 const _local = new THREE.Vector3();
 const _clamped = new THREE.Vector3();
@@ -61,12 +61,15 @@ export function resolveSphereBox(pos, vel, r, col) {
   _rel.copy(vel).sub(_surfVel);
   const vn = _rel.dot(_normal);
   if (vn < 0) {
-    const e = col.restitution ?? PHYS.restitution;
+    const e = BOUNCE[col.kind] ?? col.restitution ?? PHYS.restitution;
     // split into normal + tangential, damp tangential (friction)
     _flat.copy(_normal).multiplyScalar(vn);
     const tangential = _rel.sub(_flat); // _rel now tangential
+    let bounce = -vn * e;
+    // tiny bounces die out so the ball settles into a roll instead of jittering
+    if (bounce < 0.55 && _normal.y > 0.7) bounce = 0;
     vel.copy(tangential.multiplyScalar(PHYS.friction))
-      .addScaledVector(_normal, -vn * e)
+      .addScaledVector(_normal, bounce)
       .add(_surfVel);
     return { normal: _normal.clone(), speed: -vn, kind: col.kind, id: col.id };
   }
@@ -105,6 +108,23 @@ export function resolveRim(pos, vel, r, rimCenter, rimR, tubeR) {
 export function stepPhysics(state, dt, world, opts = {}) {
   const r = PHYS.ballRadius;
   state.vel.y -= PHYS.gravity * dt;
+
+  // gentle rim magnetism: descending near-misses get nudged onto the axis.
+  // Lives here so the aim preview shows exactly what the real ball will do.
+  if (world.hoop && state.vel.y < 0) {
+    const rc = world.hoop.rimCenter;
+    const dy = state.pos.y - rc.y;
+    if (dy > 0 && dy < 1.2) {
+      const dx = state.pos.x - rc.x, dz = state.pos.z - rc.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 1e-4 && dist < 0.6) {
+        const a = 9 * (1 - dist / 0.6) * (1 - dy / 1.2);
+        state.vel.x -= (dx / dist) * a * dt;
+        state.vel.z -= (dz / dist) * a * dt;
+      }
+    }
+  }
+
   state.cooldown = Math.max(0, (state.cooldown || 0) - dt);
   const prevY = state.pos.y;
   state.pos.addScaledVector(state.vel, dt);

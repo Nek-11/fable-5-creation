@@ -6,7 +6,9 @@ or a full court away — so you link a pair of rifts on the light panels and sho
 
 ## How to play
 
-- **Drag the ball** back and release to shoot (further = more power, lower = flatter).
+- **Slingshot the ball**: grab it, pull it back along the court in any
+  direction, release to fling it the opposite way. Longer pull = more power
+  and a flatter throw; the dotted preview turns **gold** when the shot is in.
 - **Click a light panel** to place a portal — clicks alternate cyan / magenta;
   a new click replaces the oldest portal.
 - **Drag empty space** to orbit the camera, **scroll** to zoom.
@@ -19,8 +21,9 @@ no rim or backboard touch counts as a **swish**.
 ## Tech
 
 - [three.js](https://threejs.org/) + Vite, no other dependencies
-- Custom sphere-vs-OBB physics with rotating obstacles and momentum-preserving
-  portal teleports (the aim preview simulates the same step function, portals included)
+- Custom sphere-vs-OBB physics with rotating obstacles, momentum-preserving
+  portal teleports, gentle rim assist, and a verlet-cloth net the ball really
+  pushes through (the aim preview simulates the same step function, portals included)
 - Procedural canvas textures (hardwood, ball pebbling), shader-driven portal swirls,
   UnrealBloom, all-synth WebAudio SFX
 

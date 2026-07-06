@@ -68,6 +68,104 @@ function panelFrame(w, h, d) {
   return new THREE.LineSegments(geo, mat);
 }
 
+// ---------- net: a tiny verlet cloth the ball really pushes through ----------
+const NET_COLS = 12;
+const NET_RINGS = [
+  { r: HOOP.rimRadius - 0.015, y: 0 },
+  { r: HOOP.rimRadius * 0.8, y: -0.15 },
+  { r: HOOP.rimRadius * 0.58, y: -0.29 },
+  { r: 0.11, y: -0.41 },
+];
+
+function buildNet(rimCenter) {
+  const particles = [];
+  for (let ri = 0; ri < NET_RINGS.length; ri++) {
+    const { r, y } = NET_RINGS[ri];
+    for (let k = 0; k < NET_COLS; k++) {
+      const a = (k / NET_COLS) * Math.PI * 2;
+      const p = new THREE.Vector3(
+        rimCenter.x + Math.cos(a) * r,
+        rimCenter.y + y,
+        rimCenter.z + Math.sin(a) * r
+      );
+      particles.push({ p, prev: p.clone(), pinned: ri === 0 });
+    }
+  }
+
+  const idx = (ri, k) => ri * NET_COLS + ((k + NET_COLS) % NET_COLS);
+  const pairs = [];
+  const link = (a, b) => pairs.push([a, b, particles[a].p.distanceTo(particles[b].p)]);
+  for (let ri = 0; ri < NET_RINGS.length - 1; ri++) {
+    for (let k = 0; k < NET_COLS; k++) {
+      link(idx(ri, k), idx(ri + 1, k + 1)); // zigzag diagonals
+      link(idx(ri, k), idx(ri + 1, k - 1));
+    }
+  }
+  for (let k = 0; k < NET_COLS; k++) link(idx(NET_RINGS.length - 1, k), idx(NET_RINGS.length - 1, k + 1));
+
+  const positions = new Float32Array(pairs.length * 6);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const line = new THREE.LineSegments(
+    geo,
+    new THREE.LineBasicMaterial({ color: COLORS.net, transparent: true, opacity: 0.6 })
+  );
+  line.frustumCulled = false;
+
+  const _d = new THREE.Vector3();
+  const net = {
+    line,
+    update(dt, ballPos, ballR) {
+      // verlet integrate
+      for (const pt of particles) {
+        if (pt.pinned) continue;
+        const vx = (pt.p.x - pt.prev.x) * 0.94;
+        const vy = (pt.p.y - pt.prev.y) * 0.94;
+        const vz = (pt.p.z - pt.prev.z) * 0.94;
+        pt.prev.copy(pt.p);
+        pt.p.x += vx;
+        pt.p.y += vy - 3.5 * dt * dt;
+        pt.p.z += vz;
+      }
+      // ball pushes the cords aside
+      if (ballPos) {
+        const reach = ballR + 0.025;
+        for (const pt of particles) {
+          if (pt.pinned) continue;
+          _d.copy(pt.p).sub(ballPos);
+          const dist = _d.length();
+          if (dist < reach && dist > 1e-5) {
+            pt.p.addScaledVector(_d.divideScalar(dist), reach - dist);
+          }
+        }
+      }
+      // satisfy distance constraints
+      for (let iter = 0; iter < 2; iter++) {
+        for (const [a, b, rest] of pairs) {
+          const pa = particles[a], pb = particles[b];
+          _d.copy(pb.p).sub(pa.p);
+          const dist = _d.length() || 1e-6;
+          const diff = (dist - rest) / dist * 0.5;
+          if (pa.pinned && pb.pinned) continue;
+          if (pa.pinned) pb.p.addScaledVector(_d, -diff * 2);
+          else if (pb.pinned) pa.p.addScaledVector(_d, diff * 2);
+          else { pa.p.addScaledVector(_d, diff); pb.p.addScaledVector(_d, -diff); }
+        }
+      }
+      // write to geometry
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pairs.length; i++) {
+        const [a, b] = pairs[i];
+        pos.setXYZ(i * 2, particles[a].p.x, particles[a].p.y, particles[a].p.z);
+        pos.setXYZ(i * 2 + 1, particles[b].p.x, particles[b].p.y, particles[b].p.z);
+      }
+      pos.needsUpdate = true;
+    },
+  };
+  net.update(1 / 60, null, 0);
+  return net;
+}
+
 // ---------- hoop ----------
 function buildHoop(def) {
   const m = materials();
@@ -101,28 +199,11 @@ function buildHoop(def) {
   pole.position.set(0, -(hy) / 2 + (HOOP.boardH / 2 - 0.15) / 2, boardZ - 0.1);
   group.add(pole);
 
-  // net: line segments hanging from rim in a taper
-  const netPts = [];
-  const N = 12, depth = 0.42, topR = HOOP.rimRadius - 0.015, botR = 0.11;
-  const ring = (r, y) => Array.from({ length: N }, (_, i) => {
-    const a = (i / N) * Math.PI * 2;
-    return new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
-  });
-  const top = ring(topR, 0), mid = ring((topR + botR) / 2, -depth * 0.55), bot = ring(botR, -depth);
-  for (let i = 0; i < N; i++) {
-    netPts.push(top[i], mid[(i + 1) % N], mid[(i + 1) % N], bot[i]);
-    netPts.push(top[i], mid[(i + N - 1) % N], mid[(i + N - 1) % N], bot[i]);
-  }
-  const net = new THREE.LineSegments(
-    new THREE.BufferGeometry().setFromPoints(netPts),
-    new THREE.LineBasicMaterial({ color: COLORS.net, transparent: true, opacity: 0.5 })
-  );
-  // net local origin at rim center (rim is at group origin, torus in XZ)
-  group.add(net);
-
   group.position.set(hx, hy, hz);
   group.rotation.y = yaw;
   group.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
+  const net = buildNet(new THREE.Vector3(hx, hy, hz));
 
   // colliders in world space (yaw assumed 0 or handled via quat)
   const quat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0));
@@ -283,7 +364,7 @@ export function buildLevel(level) {
 
   // hoop
   const hoop = buildHoop(level.hoop);
-  group.add(hoop.group);
+  group.add(hoop.group, hoop.net.line);
   colliders.push(hoop.boardCollider);
 
   // spinners

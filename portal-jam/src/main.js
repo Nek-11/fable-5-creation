@@ -111,7 +111,8 @@ ui.showEnd = (s) => { refreshChips(); origShowEnd(s); };
 
 // debug/testing handle
 import { stepPhysics } from './physics.js';
-window.__pj = { game, aim, camera, controls, stepPhysics, THREE };
+import { SLING } from './config.js';
+window.__pj = { game, aim, camera, controls, stepPhysics, THREE, SLING };
 
 // ---------- loop ----------
 const clock = new THREE.Clock();

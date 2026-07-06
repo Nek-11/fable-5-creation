@@ -20,18 +20,38 @@ export const COLORS = {
 export const PHYS = {
   gravity: 16,
   dt: 1 / 120,
-  ballRadius: 0.15,
-  restitution: 0.62,
-  friction: 0.85,      // tangential velocity kept on bounce
-  rimRestitution: 0.45,
-  maxSpeed: 16.5,      // max launch speed
-  minSpeed: 3.2,       // min launch speed
-  restThreshold: 0.55, // below this speed the ball is "resting"
-  restTime: 1.0,       // seconds at rest before auto-reset
+  ballRadius: 0.14,
+  restitution: 0.62,   // fallback for untyped colliders
+  friction: 0.92,      // tangential velocity kept on bounce
+  rimRestitution: 0.5,
+  restThreshold: 0.85, // below this speed the ball is "resting"
+  restTime: 0.9,       // seconds at rest before auto-reset
+};
+
+// per-surface bounciness (a basketball on hardwood is lively)
+export const BOUNCE = {
+  floor: 0.78,
+  wall: 0.6,
+  glass: 0.66,
+  panel: 0.6,
+  board: 0.68,
+  spinner: 0.8,
+};
+
+// slingshot: pull the ball back on the court plane, it flies the other way.
+// power comes from pull distance; hard throws fly flatter, soft tosses arc
+// higher — like a real throw.
+export const SLING = {
+  maxPull: 2.4,        // metres of pull for full power
+  minPull: 0.14,       // below this, the shot is cancelled
+  minSpeed: 5,
+  maxSpeed: 16.5,
+  thetaSoft: 54,       // launch angle (deg) for the gentlest toss
+  thetaHard: 40,       // launch angle (deg) at full power
 };
 
 export const HOOP = {
-  rimRadius: 0.3,
+  rimRadius: 0.32,
   rimTube: 0.022,
   rimHeight: 3.05,
   boardW: 1.5,

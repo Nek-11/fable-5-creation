@@ -5,21 +5,25 @@
 //  - kind 'panel' = light rift panel, solid, PORTALABLE
 //  - spinners are rotating blade obstacles: axis 'z' spins like a windmill
 //    facing the player, axis 'y' sweeps horizontally
+//
+// Design note: a portal pair is an elevation converter. A flat, easy
+// slingshot into a vertical panel exits a floor panel going straight UP —
+// that's the intended trick on most levels.
 
 export const LEVELS = [
   {
     id: 'warmup',
     name: 'Warm Up',
     tagline: 'no rifts required. get the arc in your hands.',
-    hint: 'drag the ball back, release to shoot',
+    hint: 'grab the ball, pull it back, let go — gold dots mean it’s in',
     par: 1,
-    camera: { pos: [0, 5.2, 13.5], target: [0, 2.2, -2] },
-    ball: [0, 0.9, 6.5],
+    camera: { pos: [0, 5.2, 12], target: [0, 2.2, -2] },
+    ball: [0, 0.9, 4.5],
     hoop: { pos: [0, 3.05, -4.5], yaw: 0 },
     floor: { w: 20, zMin: -9, zMax: 9 },
     boxes: [
       { kind: 'panel', pos: [0, 3, -9], size: [10, 6, 0.3] },
-      { kind: 'panel', pos: [3.2, 0.03, 4.2], size: [3, 0.06, 3] },
+      { kind: 'panel', pos: [3.4, 0.03, 3.4], size: [3, 0.06, 3] },
       { kind: 'panel', pos: [-3.6, 0.03, -1], size: [3, 0.06, 3] },
     ],
     spinners: [],
@@ -27,19 +31,19 @@ export const LEVELS = [
   {
     id: 'the-wall',
     name: 'The Wall',
-    tagline: 'they built it too tall. go through, not over.',
-    hint: 'click two light panels to link a rift pair',
+    tagline: 'a wall of glass says no. the rifts say yes.',
+    hint: 'fling it flat into the high board — it pops up under the rim',
     par: 2,
     camera: { pos: [0, 7.5, 15], target: [0, 2.5, -2] },
-    ball: [0, 0.9, 6.5],
+    ball: [0, 0.9, 5],
     hoop: { pos: [0, 3.05, -4.5], yaw: 0 },
     floor: { w: 20, zMin: -9, zMax: 9 },
     boxes: [
       { kind: 'wall', pos: [0, 0.4, 0.5], size: [20, 0.8, 0.5] },
       { kind: 'glass', pos: [0, 4.4, 0.5], size: [20, 7.2, 0.35] },
-      { kind: 'panel', pos: [-4.6, 2.05, 0.79], size: [4, 2.9, 0.08] },
+      { kind: 'panel', pos: [0, 3.2, 0.79], size: [5, 3.2, 0.08] },
       { kind: 'panel', pos: [0, 3, -9], size: [10, 6, 0.3] },
-      { kind: 'panel', pos: [0, 0.03, -3.3], size: [2.6, 0.06, 2] },
+      { kind: 'panel', pos: [0, 1.2, -3.2], size: [2.4, 0.12, 2.2], rig: true },
       { kind: 'panel', pos: [0, 0.03, 4.6], size: [3, 0.06, 3] },
     ],
     spinners: [],
@@ -48,7 +52,7 @@ export const LEVELS = [
     id: 'drop-in',
     name: 'Drop In',
     tagline: 'the hoop is boxed in. the only way in is straight down.',
-    hint: 'the cage is open on top — think vertical',
+    hint: 'link the floating board to the rig above the cage',
     par: 2,
     camera: { pos: [0, 7.5, 14], target: [0, 2.5, -2] },
     ball: [0, 0.9, 7],
@@ -60,7 +64,8 @@ export const LEVELS = [
       { kind: 'glass', pos: [-2.2, 2.4, -3.6], size: [0.15, 4.8, 3.55] },
       { kind: 'glass', pos: [2.2, 2.4, -3.6], size: [0.15, 4.8, 3.55] },
       { kind: 'panel', pos: [0, 7.2, -3.5], size: [3.6, 0.14, 3.2], rig: true },
-      { kind: 'panel', pos: [0, 0.03, 4.6], size: [3.6, 0.06, 3] },
+      { kind: 'panel', pos: [0, 3.0, 3.4], size: [4.2, 2.6, 0.12], rig: true },
+      { kind: 'panel', pos: [0, 0.03, 4.8], size: [3.6, 0.06, 3] },
       { kind: 'panel', pos: [4.2, 0.03, 0.8], size: [3, 0.06, 3] },
     ],
     spinners: [],
@@ -70,14 +75,15 @@ export const LEVELS = [
     name: 'Long Haul',
     tagline: 'full-court shot. your arm is too short — your arc is not.',
     hint: 'momentum survives the rift. land the lob on a rift mid-court',
-    par: 2,
+    par: 3,
     camera: { pos: [0, 8.5, 16.5], target: [0, 2.5, -8] },
     ball: [0, 0.9, 7.5],
     hoop: { pos: [0, 3.05, -20], yaw: 0 },
     floor: { w: 22, zMin: -26, zMax: 10 },
     boxes: [
+      { kind: 'panel', pos: [0, 0.03, 4.5], size: [3.2, 0.06, 3] },
       { kind: 'panel', pos: [0, 0.03, -4.6], size: [3.6, 0.06, 3.2] },
-      { kind: 'panel', pos: [0, 0.03, -10.4], size: [3.6, 0.06, 3] },
+      { kind: 'panel', pos: [0, 0.03, -11], size: [3.6, 0.06, 6] },
       { kind: 'panel', pos: [0, 3.2, -26], size: [11, 6.4, 0.3] },
     ],
     spinners: [],
@@ -94,13 +100,13 @@ export const LEVELS = [
     floor: { w: 20, zMin: -9, zMax: 9 },
     boxes: [
       { kind: 'glass', pos: [0, 4.5, 0.5], size: [20, 9, 0.25] },
+      { kind: 'panel', pos: [0, 3.0, 3.0], size: [4, 3, 0.12], rig: true },
       { kind: 'panel', pos: [0, 3, -9], size: [10, 6, 0.3] },
-      { kind: 'panel', pos: [0, 0.03, -3.3], size: [2.6, 0.06, 2] },
-      { kind: 'panel', pos: [0, 0.03, 4.4], size: [3, 0.06, 3] },
-      { kind: 'panel', pos: [-3.4, 0.03, 3], size: [3, 0.06, 3] },
+      { kind: 'panel', pos: [0, 1.2, -3.4], size: [2.4, 0.12, 2.2], rig: true },
+      { kind: 'panel', pos: [-3.4, 0.03, 4.4], size: [3, 0.06, 3] },
     ],
     spinners: [
-      { pos: [0, 4.3, -5.6], axis: 'y', blades: 2, length: 2.2, speed: 1.7, phase: 0 },
+      { pos: [0, 4.0, -5.6], axis: 'y', blades: 2, length: 2.2, speed: 2.0, phase: 0 },
     ],
   },
   {
@@ -116,8 +122,8 @@ export const LEVELS = [
     boxes: [
       { kind: 'wall', pos: [0, 0.4, 2], size: [22, 0.8, 0.5] },
       { kind: 'glass', pos: [0, 5.15, 2], size: [22, 8.7, 0.35] },
-      { kind: 'panel', pos: [0, 2.05, 2.29], size: [4.4, 2.9, 0.08] },
-      { kind: 'panel', pos: [4.2, 0.03, 5.5], size: [3, 0.06, 3] },
+      { kind: 'panel', pos: [0, 3.3, 2.29], size: [5, 2.6, 0.08] },
+      { kind: 'panel', pos: [0, 0.03, 5.5], size: [3, 0.06, 3] },
       { kind: 'glass', pos: [0, 2.3, -4.4], size: [4.4, 4.6, 0.15] },
       { kind: 'glass', pos: [0, 2.3, -7.8], size: [4.4, 4.6, 0.15] },
       { kind: 'glass', pos: [-2.2, 2.3, -6.1], size: [0.15, 4.6, 3.55] },

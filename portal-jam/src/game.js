@@ -88,6 +88,7 @@ export class Game {
     this.controls.update();
 
     this.aim.portalMeshes = this.levelObjects.portalMeshes;
+    this.aim.blockerMeshes = this.levelObjects.colliders.filter((c) => c.mesh).map((c) => c.mesh);
     this.aim.setNextPortalColor(true);
 
     this.ui.setLevel(index, LEVELS.length, lv.name, lv.par);
@@ -143,6 +144,16 @@ export class Game {
     if (!this.ball.live) return;
 
     const res = stepPhysics(this.ball.state, dt, this.world);
+
+    // the net grabs at the ball as it passes through
+    const rc = this.world.hoop.rimCenter;
+    const bp = this.ball.state.pos;
+    if (bp.y < rc.y && bp.y > rc.y - 0.5) {
+      const dx = bp.x - rc.x, dz = bp.z - rc.z;
+      if (dx * dx + dz * dz < this.world.hoop.rimRadius ** 2) {
+        this.ball.state.vel.multiplyScalar(1 - 2.6 * dt);
+      }
+    }
 
     if (res.teleported) {
       this.audio.teleport();
@@ -218,6 +229,9 @@ export class Game {
     this.confetti.update(dt);
     this.shake.update(dt);
     this.ball.syncVisual(dt);
+    if (this.levelObjects) {
+      this.levelObjects.hoop.net.update(Math.min(dt, 1 / 30), this.ball.state.pos, PHYS.ballRadius);
+    }
 
     if (this.state === 'play' && this.ball.trackRest(dt)) {
       this.ball.reset();
