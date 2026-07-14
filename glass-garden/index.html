@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glass Garden</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫙</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- ======================= HUD ======================= -->
+  <div id="hud">
+    <div id="brand">
+      <div class="name">glass garden</div>
+      <div id="clock">0:00</div>
+    </div>
+
+    <!-- vitality dial -->
+    <div id="vitality" title="jar vitality">
+      <svg viewBox="0 0 64 64">
+        <circle class="bg" cx="32" cy="32" r="26"></circle>
+        <circle id="vit-arc" class="fg" cx="32" cy="32" r="26" stroke-dasharray="163.4" stroke-dashoffset="163.4"></circle>
+      </svg>
+      <div class="core">
+        <span id="vit-pct">0</span>
+        <em>vitality</em>
+      </div>
+    </div>
+
+    <!-- species counters -->
+    <div id="census">
+      <div class="species" data-k="plants"><i>❦</i><b id="c-plants">0</b><s id="t-plants">–</s></div>
+      <div class="species" data-k="beetles"><i>🪲</i><b id="c-beetles">0</b><s id="t-beetles">–</s></div>
+      <div class="species" data-k="mantises"><i>🦗</i><b id="c-mantises">0</b><s id="t-mantises">–</s></div>
+      <div class="species" data-k="mushrooms"><i>🍄</i><b id="c-mushrooms">0</b><s id="t-mushrooms">–</s></div>
+    </div>
+
+    <!-- environment gauges -->
+    <div id="gauges">
+      <div class="gauge"><em>water</em><div class="bar"><div id="g-water"></div></div></div>
+      <div class="gauge"><em>soil</em><div class="bar"><div id="g-nutrients"></div></div></div>
+    </div>
+
+    <button id="mute" title="mute (M)">♪</button>
+
+    <div id="toast"></div>
+
+    <!-- toolbar of glass chips -->
+    <div id="toolbar">
+      <div class="motto">the jar keeps what it's given</div>
+      <div class="chips">
+        <button class="chip" data-tool="seed" title="plant a seed (1)">
+          <svg class="cd" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"></circle></svg>
+          <span class="glyph">❦</span><span class="lbl">seed</span><kbd>1</kbd>
+        </button>
+        <button class="chip" data-tool="beetle" title="release a beetle (2)">
+          <svg class="cd" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"></circle></svg>
+          <span class="glyph">🪲</span><span class="lbl">beetle</span><kbd>2</kbd>
+        </button>
+        <button class="chip" data-tool="mantis" title="release a mantis (3)">
+          <svg class="cd" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"></circle></svg>
+          <span class="glyph">🦗</span><span class="lbl">mantis</span><kbd>3</kbd>
+        </button>
+        <button class="chip" data-tool="spore" title="scatter a spore (4)">
+          <svg class="cd" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"></circle></svg>
+          <span class="glyph">🍄</span><span class="lbl">spore</span><kbd>4</kbd>
+        </button>
+        <button class="chip" data-tool="droplet" title="give water (5)">
+          <svg class="cd" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"></circle></svg>
+          <span class="glyph">💧</span><span class="lbl">water</span><kbd>5</kbd>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= pause veil ======================= -->
+  <div id="pause-veil"><div class="word">stillness</div><div class="sub">esc to continue</div></div>
+
+  <!-- ======================= title ======================= -->
+  <div id="title-overlay" class="overlay">
+    <div class="kicker">a sealed world on a sunlit desk</div>
+    <h1 class="title">Glass<em>Garden</em></h1>
+    <p class="subtitle">
+      A world you can only <b>give to</b>. Plant seeds, release small lives,
+      offer water — but nothing placed in the jar may ever be taken out.
+      Keep the little ecosystem breathing as long as you can.
+    </p>
+    <div class="controls-grid">
+      <div class="ctrl"><kbd>click</kbd> place inside the jar</div>
+      <div class="ctrl"><kbd>1–5</kbd> choose a gift</div>
+      <div class="ctrl"><kbd>drag</kbd> orbit</div>
+      <div class="ctrl"><kbd>esc</kbd> stillness</div>
+    </div>
+    <button class="btn" id="btn-start">lift the cloth</button>
+    <div class="best" id="title-best"></div>
+  </div>
+
+  <!-- ======================= elegy ======================= -->
+  <div id="end-overlay" class="overlay hidden">
+    <div class="kicker">the jar has gone quiet</div>
+    <h1 class="title elegy">Elegy</h1>
+    <p class="subtitle" id="elegy-line">the garden slipped away.</p>
+    <div class="stats">
+      <div class="stat"><div class="v" id="stat-time">0:00</div><div class="k">the jar lived</div></div>
+      <div class="stat"><div class="v" id="stat-given">0</div><div class="k">gifts given</div></div>
+      <div class="stat"><div class="v" id="stat-best">0:00</div><div class="k">longest garden</div></div>
+    </div>
+    <button class="btn" id="btn-restart">begin a new jar</button>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
