@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loop Heist 💎</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <!-- HUD strip above the playfield -->
+      <div id="hud" class="hidden">
+        <div id="hud-left">
+          <div id="hud-level">01 FIRST JOB</div>
+          <div id="hud-loop">LOOP 1</div>
+        </div>
+        <div id="timer-wrap">
+          <div id="timer-track"><div id="timer-fill"></div></div>
+          <div id="timer-label"></div>
+        </div>
+        <div id="hud-right">
+          <div id="hud-ghosts"></div>
+          <div id="hud-gems"></div>
+        </div>
+      </div>
+
+      <div id="canvas-wrap">
+        <canvas id="game" width="320" height="192"></canvas>
+        <div id="crt"></div>
+
+        <div id="banner" class="hidden"></div>
+        <div id="toast" class="hidden"></div>
+
+        <!-- Title -->
+        <div id="title" class="screen">
+          <div class="logo">
+            <span class="logo-loop">LOOP</span>
+            <span class="logo-heist">HEIST</span>
+          </div>
+          <p class="tagline">a heist in 20-second loops</p>
+          <p class="blurb">
+            when time rewinds, your past run keeps playing as a <b class="cy">ghost</b>.<br />
+            hold the doors, past-you. present-you is going for the loot.
+          </p>
+          <div class="controls">
+            <span><b class="key">WASD</b> move</span>
+            <span><b class="key">R</b> rewind now</span>
+            <span><b class="key">ESC</b> pause</span>
+            <span><b class="key">M</b> sound</span>
+          </div>
+          <button id="title-start" class="press">PRESS <b>ENTER</b> TO CASE THE JOINT</button>
+        </div>
+
+        <!-- Level select -->
+        <div id="select" class="screen hidden">
+          <div class="screen-head">CHOOSE YOUR JOB</div>
+          <div id="select-grid"></div>
+          <div class="screen-foot">ARROWS choose · ENTER start · ESC back</div>
+        </div>
+
+        <!-- Pause -->
+        <div id="pause" class="screen hidden">
+          <div class="screen-head">CASING PAUSED</div>
+          <div class="menu-col">
+            <button id="btn-resume" class="menu-btn"><b class="key">ESC</b> resume</button>
+            <button id="btn-restart" class="menu-btn"><b class="key">R</b> restart heist (clear ghosts)</button>
+            <button id="btn-quit" class="menu-btn"><b class="key">Q</b> back to the hideout</button>
+          </div>
+        </div>
+
+        <!-- Level win -->
+        <div id="win" class="screen hidden">
+          <div class="screen-head glow" id="win-title">HEIST COMPLETE</div>
+          <div id="win-stats"></div>
+          <div class="screen-foot" id="win-next"></div>
+        </div>
+
+        <!-- Finale -->
+        <div id="finale" class="screen hidden">
+          <div class="screen-head glow">THE PERFECT CRIME</div>
+          <p class="blurb">
+            five vaults, one burglar, and a small crowd of past selves.<br />
+            the museum guards never saw <i>any</i> of you.
+          </p>
+          <div id="finale-stats"></div>
+          <div class="screen-foot">ENTER · hideout</div>
+        </div>
+      </div>
+
+      <div id="hintbar"></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
