@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quillshot 🏹</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏹</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="ui">
+      <!-- In-run HUD -->
+      <div id="hud" class="hidden">
+        <div id="hud-left">
+          <div id="hearts"></div>
+          <div class="plate">
+            <div class="label">score</div>
+            <div class="big" id="score">0</div>
+          </div>
+        </div>
+        <div id="hud-right">
+          <div class="plate">
+            <div class="label">wave</div>
+            <div class="big" id="wave">1</div>
+          </div>
+          <div id="typestats"><span id="wpm">0</span> wpm · <span id="acc">100</span>%</div>
+        </div>
+        <div id="combo" class="dim">
+          <div id="combo-mult">x1</div>
+          <div id="combo-bar"><div id="combo-fill"></div></div>
+        </div>
+      </div>
+
+      <div id="wave-banner" class="hidden"></div>
+
+      <!-- Start screen -->
+      <div id="start-screen" class="screen">
+        <div class="card">
+          <div class="badge">⌨ WORDS ARE AMMUNITION</div>
+          <h1 class="title">QUILL<span class="title-shot">SHOT</span><span class="title-arrow">➳</span></h1>
+          <p class="tagline">a typing roguelike. the horde reads left to right. so do you.</p>
+          <div class="howto">
+            <div class="row"><b>type</b> the word above an enemy's head to draw &amp; loose an arrow</div>
+            <div class="row">first letter picks your target · finish the word to fire</div>
+            <div class="row miss">typo? your archer panics and throws a <b>paper airplane</b>. it has never hurt anyone.</div>
+            <div class="row"><span class="key">1</span><span class="key">2</span><span class="key">3</span> pick boons between waves · <span class="key">esc</span> pause</div>
+          </div>
+          <div class="press">press <span class="key wide">any key</span> to nock an arrow</div>
+        </div>
+      </div>
+
+      <!-- Pause -->
+      <div id="pause-screen" class="screen hidden">
+        <div class="card slim">
+          <h2>PAUSED</h2>
+          <p class="tagline">the horde politely waits.</p>
+          <div class="press">press <span class="key">esc</span> to resume</div>
+        </div>
+      </div>
+
+      <!-- Upgrade picker -->
+      <div id="upgrade-screen" class="screen lower hidden">
+        <h2 class="boon-title">WAVE CLEARED — CHOOSE A BOON</h2>
+        <div id="cards"></div>
+        <p class="hint">press <span class="key">1</span> <span class="key">2</span> <span class="key">3</span> or click</p>
+      </div>
+
+      <!-- Game over -->
+      <div id="over-screen" class="screen hidden">
+        <div class="card">
+          <div class="badge dead">☠ OVERRUN</div>
+          <h1>OUT OF<br />ARROWS</h1>
+          <p class="tagline">the pen was mightier. briefly.</p>
+          <div class="result">
+            <div class="res-grid">
+              <div class="res"><div class="label">score</div><div class="val" id="over-score">0</div></div>
+              <div class="res"><div class="label">best</div><div class="val" id="over-best">0</div></div>
+              <div class="res"><div class="label">wave</div><div class="val" id="over-wave">1</div></div>
+              <div class="res"><div class="label">wpm</div><div class="val" id="over-wpm">0</div></div>
+              <div class="res"><div class="label">accuracy</div><div class="val" id="over-acc">0%</div></div>
+            </div>
+            <div id="new-best" class="hidden">★ new best! ★</div>
+          </div>
+          <button id="retry-btn">RETRY</button>
+          <div class="press">or press <span class="key">enter</span></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
