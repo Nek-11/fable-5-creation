@@ -9,6 +9,9 @@ on:
       - echolocation/**
       - portal-jam/**
       - avalanche-run/**
+      - quillshot/**
+      - loop-heist/**
+      - glass-garden/**
       - site/**
       - .github/workflows/deploy.yml
   workflow_dispatch:
@@ -61,16 +64,37 @@ jobs:
           npm ci
           npm run build
 
+      - name: Build quillshot
+        run: |
+          cd quillshot
+          npm ci
+          npm run build
+
+      - name: Build loop-heist
+        run: |
+          cd loop-heist
+          npm ci
+          npm run build
+
+      - name: Build glass-garden
+        run: |
+          cd glass-garden
+          npm ci
+          npm run build
+
       - name: Assemble site
         run: |
           mkdir -p _site
           cp -r site/. _site/
-          mkdir -p _site/gravity-gardener _site/paper-storm _site/echolocation _site/portal-jam _site/avalanche-run
+          mkdir -p _site/gravity-gardener _site/paper-storm _site/echolocation _site/portal-jam _site/avalanche-run _site/quillshot _site/loop-heist _site/glass-garden
           cp -r gravity-gardener/dist/. _site/gravity-gardener/
           cp -r paper-storm/dist/. _site/paper-storm/
           cp -r echolocation/dist/. _site/echolocation/
           cp -r portal-jam/dist/. _site/portal-jam/
           cp -r avalanche-run/dist/. _site/avalanche-run/
+          cp -r quillshot/dist/. _site/quillshot/
+          cp -r loop-heist/dist/. _site/loop-heist/
+          cp -r glass-garden/dist/. _site/glass-garden/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
