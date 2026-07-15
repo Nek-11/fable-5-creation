@@ -1,9 +1,16 @@
-// DOM overlay: HUD, screens, upgrade cards, wave banner.
+// DOM overlay: HUD, screens, upgrade cards, wave banner, difficulty picker.
 // Canvas draws the world; this file draws everything with a font stack.
+
+import { CONFIG as C } from './config.js';
 
 export class UI {
   constructor() {
     this.el = {
+      modes: document.getElementById('modes'),
+      modeDesc: document.getElementById('mode-desc'),
+      modeBest: document.getElementById('mode-best'),
+      hudMode: document.getElementById('hud-mode'),
+      overMode: document.getElementById('over-mode'),
       hud: document.getElementById('hud'),
       hearts: document.getElementById('hearts'),
       score: document.getElementById('score'),
@@ -28,6 +35,37 @@ export class UI {
       retry: document.getElementById('retry-btn'),
     };
     this.bannerTimer = null;
+
+    // build the difficulty chips once
+    this.modeChips = [];
+    C.DIFF_ORDER.forEach((key, i) => {
+      const d = C.DIFFICULTIES[key];
+      const chip = document.createElement('div');
+      chip.className = 'mode-chip';
+      chip.textContent = d.name;
+      chip.addEventListener('click', () => this.onModePick && this.onModePick(i));
+      this.el.modes.appendChild(chip);
+      this.modeChips.push(chip);
+    });
+  }
+
+  setMode(i, diff, best) {
+    this.modeChips.forEach((chip, j) => {
+      const sel = i === j;
+      chip.classList.toggle('sel', sel);
+      chip.style.borderColor = sel ? diff.color : '';
+      chip.style.color = sel ? diff.color : '';
+      chip.style.boxShadow = sel ? `0 0 14px ${diff.color}44` : '';
+    });
+    this.el.modeDesc.textContent = diff.desc;
+    this.el.modeBest.textContent = best > 0
+      ? `best on ${diff.name.toLowerCase()}: ${best.toLocaleString('en-US')} · score ×${diff.scoreMult}`
+      : `score ×${diff.scoreMult}`;
+  }
+
+  setModeHud(diff) {
+    this.el.hudMode.textContent = `${diff.name} ×${diff.scoreMult}`;
+    this.el.hudMode.style.color = diff.color;
   }
 
   // screen: 'start' | 'pause' | 'over' | 'upgrade' | null
@@ -109,12 +147,16 @@ export class UI {
     this.el.cards.innerHTML = '';
   }
 
-  showGameOver({ score, best, isNewBest, wave, wpm, acc }) {
+  showGameOver({ score, best, isNewBest, wave, wpm, acc, mode }) {
     this.el.overScore.textContent = score.toLocaleString('en-US');
     this.el.overBest.textContent = best.toLocaleString('en-US');
     this.el.overWave.textContent = wave;
     this.el.overWpm.textContent = wpm;
     this.el.overAcc.textContent = `${acc}%`;
+    if (mode) {
+      this.el.overMode.textContent = `${mode.name} ×${mode.scoreMult}`;
+      this.el.overMode.style.color = mode.color;
+    }
     this.el.newBest.classList.toggle('hidden', !isNewBest);
     this.show('over');
   }

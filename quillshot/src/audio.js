@@ -192,4 +192,100 @@ export class AudioEngine {
     this.blip(233, 0.6, 'square', 0.14, 116, 0.48);
     this.noiseBurst(1.0, 250, 0.25, 'lowpass', 0.4);
   }
+
+  // --- weapon evolution ---
+
+  // fire cue per weapon kind
+  fire(kind) {
+    switch (kind) {
+      case 'dagger':
+        this.noiseBurst(0.08, 4200, 0.14, 'highpass');
+        this.noiseBurst(0.08, 3600, 0.12, 'highpass', 0.05);
+        break;
+      case 'bolt':
+        this.blip(520, 0.22, 'sine', 0.12, 1040);
+        this.blip(784, 0.16, 'triangle', 0.07, 1568, 0.04);
+        break;
+      case 'blade':
+        this.noiseBurst(0.18, 2400, 0.18, 'bandpass');
+        this.blip(880, 0.14, 'sine', 0.06, 1760);
+        break;
+      case 'dragon':
+        this.blip(85, 0.6, 'sawtooth', 0.26, 48);
+        this.noiseBurst(0.5, 300, 0.28, 'lowpass');
+        this.blip(170, 0.4, 'square', 0.08, 95, 0.08);
+        break;
+      default:
+        this.loose();
+    }
+  }
+
+  // impact cue per weapon kind
+  impact(kind) {
+    const m = 0.88 + Math.random() * 0.28;
+    switch (kind) {
+      case 'dagger':
+        this.blip(1900 * m, 0.12, 'triangle', 0.16, 950 * m);
+        this.noiseBurst(0.06, 5000, 0.1, 'highpass');
+        break;
+      case 'bolt':
+        this.blip(660 * m, 0.12, 'square', 0.14, 165 * m);
+        this.noiseBurst(0.1, 2000 * m, 0.12);
+        break;
+      case 'blade':
+        this.noiseBurst(0.14, 2800 * m, 0.2, 'bandpass');
+        this.blip(300 * m, 0.1, 'sine', 0.14, 90);
+        break;
+      case 'dragon':
+        this.blip(95 * m, 0.28, 'sine', 0.38, 40 * m);
+        this.noiseBurst(0.3, 500 * m, 0.3, 'lowpass');
+        break;
+      default:
+        this.hit();
+    }
+  }
+
+  // tier change jingle (up: rising, down: falling)
+  transform(tier, up) {
+    if (up) {
+      const base = 330 * Math.pow(1.19, tier);
+      this.blip(base, 0.09, 'square', 0.1);
+      this.blip(base * 1.26, 0.09, 'square', 0.1, null, 0.07);
+      this.blip(base * 1.5, 0.2, 'square', 0.12, null, 0.14);
+      this.noiseBurst(0.25, 3000, 0.08, 'highpass', 0.14);
+      if (tier >= 5) this.blip(66, 0.9, 'sawtooth', 0.22, 40, 0.1); // dragon groan
+    } else {
+      this.blip(392, 0.1, 'square', 0.08);
+      this.blip(262, 0.22, 'square', 0.09, 200, 0.09);
+    }
+  }
+
+  // --- power words ---
+
+  runeSpawn() {
+    this.blip(1568, 0.12, 'sine', 0.06);
+    this.blip(2093, 0.25, 'sine', 0.05, null, 0.1);
+  }
+
+  superLightning() {
+    for (let i = 0; i < 4; i++) {
+      this.noiseBurst(0.09, 5200 - i * 700, 0.22, 'highpass', i * 0.07);
+      this.blip(2400 - i * 350, 0.08, 'sawtooth', 0.1, 400, i * 0.07);
+    }
+    this.blip(60, 0.5, 'sine', 0.3, 30, 0.05);
+  }
+
+  superFireRain() {
+    this.noiseBurst(1.8, 260, 0.3, 'lowpass');
+    this.blip(120, 1.2, 'sawtooth', 0.1, 55);
+    for (let i = 0; i < 5; i++) {
+      this.noiseBurst(0.2, 900 + Math.random() * 800, 0.16, 'bandpass', 0.25 + i * 0.32);
+    }
+  }
+
+  superWindBlade() {
+    this.noiseBurst(0.7, 1600, 0.3, 'bandpass');
+    this.blip(440, 0.5, 'sine', 0.1, 1760);
+    this.blip(110, 0.4, 'sine', 0.2, 55, 0.1);
+  }
 }

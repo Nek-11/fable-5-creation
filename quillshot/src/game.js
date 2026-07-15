@@ -8,7 +8,7 @@ import { Enemy, Ragdoll } from './enemies.js';
 import { Projectiles } from './projectiles.js';
 import { Particles } from './particles.js';
 import { Background } from './background.js';
-import { pickWord, BOSS_SENTENCES } from './words.js';
+import { pickWord, cipherWord, cipherSentence, BOSS_SENTENCES } from './words.js';
 import { rollUpgrades } from './upgrades.js';
 
 export class Game {
@@ -32,11 +32,40 @@ export class Game {
 
     this.time = 0;
     this.state = 'start'; // start | playing | upgrade | paused | over
-    this.best = Number(localStorage.getItem('quillshot-best') || 0);
+
+    // difficulty: remembered across sessions, best score kept per mode
+    const saved = localStorage.getItem('quillshot-mode');
+    this.diffKey = C.DIFF_ORDER.includes(saved) ? saved : 'easy';
+    this.best = this.loadBest();
 
     this.resetRun();
     ui.show('start');
     ui.setHudVisible(false);
+    ui.onModePick = (i) => this.setDifficulty(i);
+    ui.setMode(C.DIFF_ORDER.indexOf(this.diffKey), this.diff, this.best);
+  }
+
+  get diff() {
+    return C.DIFFICULTIES[this.diffKey];
+  }
+
+  bestKey() {
+    return `quillshot-best-${this.diffKey}`;
+  }
+
+  loadBest() {
+    // v1 stored a single best — inherit it as the EASY best
+    const legacy = this.diffKey === 'easy' ? localStorage.getItem('quillshot-best') : null;
+    return Number(localStorage.getItem(this.bestKey()) || legacy || 0);
+  }
+
+  setDifficulty(i) {
+    const key = C.DIFF_ORDER[Math.max(0, Math.min(C.DIFF_ORDER.length - 1, i))];
+    if (key !== this.diffKey) this.audio.lock();
+    this.diffKey = key;
+    localStorage.setItem('quillshot-mode', key);
+    this.best = this.loadBest();
+    this.ui.setMode(C.DIFF_ORDER.indexOf(key), this.diff, this.best);
   }
 
   resize(w, h) {
@@ -67,6 +96,7 @@ export class Game {
     this.enemies = [];
     this.ragdolls = [];
     this.target = null;
+    this.grace = null; // survives a target dying out from under a mid-word lock
     this.projectiles.clear();
     this.particles.clear();
     this.spawnQueue = [];
@@ -86,6 +116,8 @@ export class Game {
     this.shakeY = 0;
     this.damageFlash = 0;
     this.statT = 0;
+    this.effects = []; // super attacks, transform rings
+    this.lastRuneWave = 0; // wave a runebearer last appeared
     this.player.reset();
   }
 
@@ -106,6 +138,7 @@ export class Game {
     this.ui.setScore(0);
     this.ui.setCombo(1, 0);
     this.ui.setStats(0, 100);
+    this.ui.setModeHud(this.diff);
     this.nextWave();
   }
 
@@ -114,17 +147,20 @@ export class Game {
     this.wave++;
     this.secondWindUsed = false;
     this.ui.setWave(this.wave);
-    const isBoss = this.wave % 5 === 0;
+    const D = this.diff;
+    const isBoss = this.wave % D.bossEvery === 0;
     this.ui.waveBanner(this.wave, isBoss);
     if (isBoss) this.audio.bossRoar();
     else this.audio.waveStart();
 
     const n = this.wave;
-    let walkers = 3 + Math.ceil(n * 0.8);
-    let runners = n >= 2 ? Math.floor(n / 2) : 0;
-    let flyers = n >= 3 ? Math.floor((n - 1) / 2) : 0;
-    let brutes = n >= 3 ? Math.floor(n / 3) : 0;
-    let bombers = n >= 4 ? Math.min(4, Math.floor((n - 2) / 2)) : 0;
+    const U = D.unlocks;
+    const sm = D.spawnMult;
+    let walkers = Math.round((3 + Math.ceil(n * 0.8)) * sm);
+    let runners = n >= U.runner ? Math.round(Math.floor((n - U.runner + 2) / 2) * sm) : 0;
+    let flyers = n >= U.flyer ? Math.round(Math.floor((n - U.flyer + 2) / 2) * sm) : 0;
+    let brutes = n >= U.brute ? Math.round(Math.floor(n / 3) * sm) : 0;
+    let bombers = n >= U.bomber ? Math.round(Math.min(4, Math.floor((n - U.bomber + 2) / 2)) * sm) : 0;
     if (isBoss) {
       walkers = Math.ceil(walkers / 2);
       runners = Math.ceil(runners / 2);
@@ -142,20 +178,28 @@ export class Game {
     push('flyer', flyers);
     push('brute', brutes);
     push('bomber', bombers);
-    while (list.length > C.WAVE_CAP) list.splice((Math.random() * list.length) | 0, 1);
+    while (list.length > D.waveCap) list.splice((Math.random() * list.length) | 0, 1);
     // shuffle
     for (let i = list.length - 1; i > 0; i--) {
       const j = (Math.random() * (i + 1)) | 0;
       [list[i], list[j]] = [list[j], list[i]];
     }
+
+    // power words: roughly one runebearer every 2-3 waves, guaranteed by wave 3
+    const overdue = n - this.lastRuneWave >= 3;
+    const guaranteed = n >= 3 && this.lastRuneWave === 0;
+    if (n >= 2 && (overdue || guaranteed || Math.random() < 0.35)) {
+      list.splice((Math.random() * (list.length + 1)) | 0, 0, 'runebearer');
+      this.lastRuneWave = n;
+    }
+
     if (isBoss) list.unshift('boss');
 
     this.spawnQueue = list;
-    this.spawnInterval = Math.max(
-      C.SPAWN_MIN_INTERVAL,
-      C.SPAWN_BASE_INTERVAL - n * 0.07,
-    );
-    this.speedRamp = Math.min(C.SPEED_RAMP_CAP, 1 + n * C.SPEED_RAMP);
+    // EASY keeps the original cadence; denser modes spawn proportionally faster
+    const easyInterval = Math.max(C.SPAWN_MIN_INTERVAL, C.SPAWN_BASE_INTERVAL - n * 0.07);
+    this.spawnInterval = Math.max(0.55, easyInterval / (1 + (sm - 1) * 0.7));
+    this.speedRamp = Math.min(C.SPEED_RAMP_CAP, 1 + n * C.SPEED_RAMP) * D.speedMult;
     this.spawnT = 0.4;
     this.waveDelay = 1.3;
   }
@@ -169,29 +213,49 @@ export class Game {
     return banned;
   }
 
+  // one word, difficulty-aware: cipher strings on EXTREME, longer tiers on
+  // MEDIUM+, sharpshooter shortens everything
+  rollWord(tier, banned) {
+    const D = this.diff;
+    if (Math.random() < D.tierUpChance) tier += 1;
+    tier = Math.max(0, Math.min(3, tier - this.up.sharp));
+    if (D.cipher) return cipherWord(tier, banned);
+    return pickWord(tier, banned);
+  }
+
   spawnEnemy(type) {
+    const D = this.diff;
     const banned = this.bannedFirstLetters();
     let words;
     if (type === 'boss') {
       words = BOSS_SENTENCES[(Math.random() * BOSS_SENTENCES.length) | 0].slice();
+    } else if (D.cipher && type === 'walker' && Math.random() < 0.12) {
+      // occasional full sentence, punctuation and all
+      words = [cipherSentence(banned)];
     } else {
-      let tier = C.ENEMIES[type].tier;
-      if (type === 'walker' && this.wave >= 6 && Math.random() < 0.28) tier = 2;
-      tier = Math.max(0, tier - this.up.sharp);
-      if (type === 'brute') {
-        const w1 = pickWord(tier, banned);
+      const tier = type === 'walker' && this.wave >= 6 && Math.random() < 0.28
+        ? 2
+        : C.ENEMIES[type].tier;
+      const w1 = this.rollWord(tier, banned);
+      words = [w1];
+      // brutes always carry two; on HARD+ ordinary grounded enemies often do
+      const extra = type === 'brute'
+        || (D.twoWordChance > 0
+          && (type === 'walker' || type === 'bomber' || type === 'flyer')
+          && Math.random() < D.twoWordChance);
+      if (extra) {
         banned.add(w1[0]);
-        words = [w1, pickWord(Math.max(0, tier - 1), banned)];
-      } else {
-        words = [pickWord(tier, banned)];
+        words.push(this.rollWord(Math.max(0, tier - 1), banned));
       }
     }
     this.enemies.push(new Enemy(this, type, words));
+    if (type === 'runebearer') this.audio.runeSpawn();
   }
 
   spawnOrb(boss) {
     const banned = this.bannedFirstLetters();
-    const o = new Enemy(this, 'orb', [pickWord(0, banned)]);
+    const word = this.diff.cipher ? cipherWord(0, banned) : pickWord(0, banned);
+    const o = new Enemy(this, 'orb', [word]);
     o.x = boss.x - 34 * boss.su;
     o.y = boss.hitY() - 24 * this.scale;
     o.baseY = o.y;
@@ -242,9 +306,24 @@ export class Game {
   onKey(e) {
     const k = e.key;
     switch (this.state) {
-      case 'start':
+      case 'start': {
+        // difficulty select: ←/→ cycle, 1-4 direct; anything else launches
+        const idx = C.DIFF_ORDER.indexOf(this.diffKey);
+        if (k === 'ArrowLeft') {
+          this.setDifficulty((idx + C.DIFF_ORDER.length - 1) % C.DIFF_ORDER.length);
+          return true;
+        }
+        if (k === 'ArrowRight') {
+          this.setDifficulty((idx + 1) % C.DIFF_ORDER.length);
+          return true;
+        }
+        if (k >= '1' && k <= '4') {
+          this.setDifficulty(Number(k) - 1);
+          return true;
+        }
         if (k.length === 1 || k === 'Enter') this.startRun();
         return true;
+      }
       case 'over':
         if (k === 'Enter' || k === ' ') {
           this.startRun();
@@ -267,8 +346,15 @@ export class Game {
           return true;
         }
         if (k.length === 1) {
-          // letters shoot; other printables are swallowed without penalty
-          if (/[a-z]/i.test(k)) this.typeLetter(k.toLowerCase());
+          if (this.diff.caseSensitive) {
+            // EXTREME: every printable char is live ammunition, typed exactly
+            // (modifier-only presses like Shift never reach here — their
+            // e.key is "Shift", length > 1)
+            this.typeLetter(k);
+          } else if (/[a-z]/i.test(k)) {
+            // letters shoot; other printables are swallowed without penalty
+            this.typeLetter(k.toLowerCase());
+          }
           return true;
         }
         return false;
@@ -318,6 +404,28 @@ export class Game {
       }
       return this.mistake();
     }
+    // grace window: the lock died out from under a mid-word streak, so
+    // letters continuing the dead word are consumed — never punished
+    const g = this.grace;
+    if (g && g.t > 0) {
+      if (g.word[g.progress] === ch) {
+        g.progress++;
+        g.t = 0.45;
+        this.stats.correctChars++;
+        this.audio.tick(g.progress / g.word.length);
+        if (g.progress >= g.word.length) this.grace = null;
+        return;
+      }
+      const fresh = this.acquire(ch);
+      if (fresh) {
+        this.grace = null;
+        this.target = fresh;
+        fresh.progress = 0;
+        this.audio.lock();
+        return this.correctLetter(fresh);
+      }
+      return; // stray keys during grace are swallowed, not fumbled
+    }
     const best = this.acquire(ch);
     if (best) {
       this.target = best;
@@ -337,6 +445,10 @@ export class Game {
     if (t.progress >= t.word.length) this.completeWord(t);
   }
 
+  get weaponKind() {
+    return C.WEAPONS[Math.max(1, Math.min(C.MAX_MULT, this.mult))].id;
+  }
+
   completeWord(t) {
     t.lastWord = t.word;
     t.words.shift();
@@ -344,10 +456,18 @@ export class Game {
     this.stats.words++;
 
     this.player.release();
-    this.audio.loose();
+    const kind = this.weaponKind;
+    this.audio.fire(kind);
     const tip = this.player.bowHand;
     const flame = this.up.flame > 0;
-    this.projectiles.fireArrow(tip.x, tip.y, t, { flame });
+    this.projectiles.fireArrow(tip.x, tip.y, t, { flame, kind });
+    // cosmetic companions: the twin dagger and the blade fan
+    if (kind === 'dagger') {
+      this.projectiles.fireArrow(tip.x, tip.y + 8, t, { kind, ghost: true, angleJitter: 0.22 });
+    } else if (kind === 'blade') {
+      this.projectiles.fireArrow(tip.x, tip.y, t, { kind, ghost: true, angleJitter: 0.34 });
+      this.projectiles.fireArrow(tip.x, tip.y, t, { kind, ghost: true, angleJitter: -0.34 });
+    }
 
     // quickdraw bonus volley
     if (this.up.quickdraw > 0 && this.time - this.lastWordTime < C.QUICKDRAW_WINDOW) {
@@ -356,7 +476,7 @@ export class Game {
         const other = this.nearestEnemyTo(this.player.x, this.groundY, t);
         const victim = other || (t.words.length > 0 ? t : null);
         if (!victim) break;
-        this.projectiles.fireArrow(tip.x, tip.y - (i + 1) * 7, victim, { flame, bonus: true });
+        this.projectiles.fireArrow(tip.x, tip.y - (i + 1) * 7, victim, { flame, kind, bonus: true });
         fired++;
       }
       if (fired) {
@@ -365,17 +485,12 @@ export class Game {
     }
     this.lastWordTime = this.time;
 
-    // combo
+    // combo → weapon evolution
     this.streak++;
     const newMult = Math.min(C.MAX_MULT, 1 + Math.floor(this.streak / C.COMBO_STEP));
     if (newMult > this.mult) {
       this.mult = newMult;
-      this.audio.comboUp(newMult);
-      this.particles.floatText(this.player.x, this.groundY - 120 * this.scale, `combo x${newMult}`, {
-        color: '#ff8c42',
-        size: 16,
-        life: 1,
-      });
+      this.setTier(newMult, true);
     }
     this.ui.setCombo(this.mult, this.mult >= C.MAX_MULT ? 1 : (this.streak % C.COMBO_STEP) / C.COMBO_STEP);
 
@@ -395,10 +510,10 @@ export class Game {
       const tip = this.player.bowHand;
       const victim = this.nearestEnemyTo(this.player.x, this.groundY, null);
       if (victim) {
-        this.projectiles.fireArrow(tip.x, tip.y, victim, { flame: this.up.flame > 0, bonus: true });
+        this.projectiles.fireArrow(tip.x, tip.y, victim, { flame: this.up.flame > 0, kind: this.weaponKind, bonus: true });
       }
       this.player.release();
-      this.audio.loose();
+      this.audio.fire(this.weaponKind);
       this.particles.floatText(this.player.x, this.groundY - 120 * this.scale, 'second wind!', {
         color: '#7ee8fa',
         size: 14,
@@ -428,10 +543,36 @@ export class Game {
           life: 0.7,
         });
         this.ui.comboBreak();
+        this.streak = 0;
+        this.mult = 1;
+        this.setTier(1, false); // the weapon reverts with the combo
       }
       this.streak = 0;
       this.mult = 1;
       this.ui.setCombo(1, 0);
+    }
+  }
+
+  // weapon evolution moment: flash, jingle, name card
+  setTier(tier, up) {
+    this.player.transform(tier);
+    this.audio.transform(tier, up);
+    if (up) {
+      this.audio.comboUp(tier);
+      const w = C.WEAPONS[tier];
+      this.particles.floatText(this.player.x, this.groundY - 130 * this.scale, `x${tier} — ${w.name}`, {
+        color: tier >= 5 ? '#ffdf70' : tier >= 3 ? '#c69bff' : '#ff8c42',
+        size: 15 + tier * 2,
+        life: 1.2,
+      });
+      this.particles.burst(this.player.x, this.groundY - 50 * this.scale, {
+        color: tier >= 5 ? '#ffdf70' : tier >= 3 ? '#c69bff' : '#dfe8ff',
+        count: 10 + tier * 4,
+        speed: 200,
+        gravity: -60,
+        life: 0.6,
+      });
+      if (tier >= 5) this.addShake(3);
     }
   }
 
@@ -453,7 +594,7 @@ export class Game {
   // ----------------------------------------------------------------- combat
   onArrowHit(t, arrow) {
     if (t.dead) return;
-    this.audio.hit();
+    this.audio.impact(arrow.kind);
     t.staggerT = 0.35;
 
     const isBoss = t.type === 'boss';
@@ -466,6 +607,26 @@ export class Game {
       spread: 2.4,
       speed: 260,
     });
+
+    // high-tier perks: spectral blades shockwave-stagger the neighborhood,
+    // the spirit dragon's passage chips them for real (small AoE)
+    if (arrow.kind === 'blade' || arrow.kind === 'dragon') {
+      const r = (arrow.kind === 'dragon' ? 95 : 70) * this.scale;
+      let chipped = 0;
+      for (const e of [...this.enemies]) {
+        if (e.dead || e.doomed || e === t || e.type === 'boss') continue;
+        const dx = e.x - t.x;
+        const dy = e.hitY() - t.hitY();
+        if (dx * dx + dy * dy > r * r) continue;
+        e.staggerT = Math.max(e.staggerT, 0.3);
+        if (arrow.kind === 'dragon' && chipped < 4) {
+          chipped++;
+          if (e.words.length > 0) e.words.pop();
+          this.particles.burst(e.x, e.hitY(), { color: '#ffdf70', count: 7, speed: 170, life: 0.4 });
+          if (e.words.length === 0) this.killEnemy(e, null);
+        }
+      }
+    }
 
     // flaming arrows ignite the neighborhood
     if (arrow.flame) {
@@ -516,12 +677,17 @@ export class Game {
     if (t.dead) return;
     t.dead = true;
     if (this.target === t) {
+      // the lock died mid-word (chain lightning, fire rain, burn tick...):
+      // the letters already in the player's fingers must never fumble
+      if (t.word && t.progress > 0) {
+        this.grace = { word: t.word, progress: t.progress, t: 0.8 };
+      }
       this.target = null;
       this.player.setDraw(0);
     }
 
-    // score with combo multiplier
-    const pts = C.ENEMIES[t.type].score * this.mult;
+    // score with combo multiplier and difficulty bonus
+    const pts = Math.round(C.ENEMIES[t.type].score * this.mult * this.diff.scoreMult);
     this.score += pts;
     this.ui.setScore(this.score);
     const tag = t.tagPos();
@@ -548,9 +714,12 @@ export class Game {
       for (let i = 0; i < this.up.multishot; i++) {
         const o = this.nearestEnemyTo(t.x, t.hitY(), null);
         if (!o) break;
-        this.projectiles.fireArrow(t.x, t.hitY(), o, { bonus: true, flame: this.up.flame > 0 });
+        this.projectiles.fireArrow(t.x, t.hitY(), o, { bonus: true, flame: this.up.flame > 0, kind: arrow.kind });
       }
     }
+
+    // POWER WORD: a felled runebearer unleashes a super attack
+    if (t.type === 'runebearer') this.triggerSuper(t);
 
     if (t.type === 'boss') {
       this.audio.bossDown();
@@ -562,6 +731,203 @@ export class Game {
       // his orbs die with him
       for (const e of [...this.enemies]) {
         if (e.type === 'orb') this.vaporize(e, 8);
+      }
+    }
+  }
+
+  // ------------------------------------------------------- power word supers
+  addEffect(fx) {
+    if (this.effects.length >= C.MAX_EFFECTS) return;
+    this.effects.push(fx);
+  }
+
+  // supers kill ordinary enemies outright; bosses lose one word instead
+  superDamage(e) {
+    if (e.dead) return;
+    if (e.type === 'boss') {
+      if (e.words.length > 0) e.words.pop();
+      e.staggerT = 0.35;
+      this.particles.burst(e.x, e.hitY(), { color: '#ffdf70', count: 12, speed: 220 });
+      if (e.words.length === 0) this.killEnemy(e, null);
+      return;
+    }
+    this.killEnemy(e, null);
+  }
+
+  triggerSuper(rune) {
+    const x = rune.x;
+    const y = rune.hitY();
+    this.slowmo(C.SLOWMO_SUPER, 0.55);
+    this.addShake(5);
+    this.hitStop = Math.max(this.hitStop, 0.05);
+    this.particles.burst(x, y, { color: '#ffdf70', count: 30, speed: 340, size: 5 });
+
+    const roll = (Math.random() * 3) | 0;
+    if (roll === 0) {
+      // CHAIN LIGHTNING: arc through the 4 nearest enemies
+      const victims = [];
+      let fromX = x;
+      let fromY = y;
+      const pts = [[x, y]];
+      for (let i = 0; i < 4; i++) {
+        let best = null;
+        let bestD = Infinity;
+        for (const e of this.enemies) {
+          if (e.dead || victims.includes(e)) continue;
+          const d = (e.x - fromX) ** 2 + (e.hitY() - fromY) ** 2;
+          if (d < bestD) { bestD = d; best = e; }
+        }
+        if (!best) break;
+        victims.push(best);
+        pts.push([best.x, best.hitY()]);
+        fromX = best.x;
+        fromY = best.hitY();
+      }
+      this.audio.superLightning();
+      this.addEffect({ type: 'lightning', pts, t: 0.45, maxT: 0.45 });
+      this.particles.floatText(x, y - 60, 'CHAIN LIGHTNING', { color: '#7ee8fa', size: 20, life: 1.2 });
+      for (const v of victims) this.superDamage(v);
+    } else if (roll === 1) {
+      // FIRE RAIN: meteors pound the right half of the field for ~2s
+      this.audio.superFireRain();
+      this.addEffect({ type: 'firerain', t: 2.0, acc: 0, spawned: 0 });
+      this.particles.floatText(x, y - 60, 'FIRE RAIN', { color: '#ff8c42', size: 20, life: 1.2 });
+    } else {
+      // WIND BLADE: a crescent slices the whole ground row
+      this.audio.superWindBlade();
+      this.addEffect({ type: 'windblade', x: this.player.x + 30, t: 1.6, maxT: 1.6 });
+      this.particles.floatText(x, y - 60, 'WIND BLADE', { color: '#d8f4ff', size: 20, life: 1.2 });
+    }
+  }
+
+  updateEffects(dt) {
+    for (let i = this.effects.length - 1; i >= 0; i--) {
+      const fx = this.effects[i];
+      fx.t -= dt;
+      switch (fx.type) {
+        case 'firerain': {
+          fx.acc += dt;
+          while (fx.acc > 0.14 && fx.spawned < 14) {
+            fx.acc -= 0.14;
+            fx.spawned++;
+            this.addEffect({
+              type: 'meteor',
+              x: this.w * (0.45 + Math.random() * 0.6),
+              y: -30,
+              vx: -(120 + Math.random() * 120) * (this.w / 1280),
+              vy: (620 + Math.random() * 220) * (this.h / 720),
+              t: 4,
+            });
+          }
+          break;
+        }
+        case 'meteor': {
+          fx.x += fx.vx * dt;
+          fx.y += fx.vy * dt;
+          if (Math.random() < 24 * dt) this.particles.ember(fx.x, fx.y, '#ff8c42', 20);
+          if (fx.y >= this.groundY - 6) {
+            fx.t = 0; // consumed
+            this.addShake(2.5);
+            this.particles.burst(fx.x, this.groundY - 6, { color: '#ffd166', count: 14, speed: 260, size: 5 });
+            this.particles.burst(fx.x, this.groundY - 6, { color: '#ff8c42', count: 10, speed: 200 });
+            const r = 75 * this.scale;
+            for (const e of this.enemies) {
+              if (e.dead) continue;
+              const dx = e.x - fx.x;
+              const dy = e.hitY() - (this.groundY - 6);
+              if (dx * dx + dy * dy < r * r && e.burnT < 0) {
+                e.burnT = 1.0;
+                this.audio.ignite();
+              }
+            }
+          }
+          break;
+        }
+        case 'windblade': {
+          const prevX = fx.x;
+          fx.x += (this.w / 1.1) * dt;
+          for (const e of [...this.enemies]) {
+            if (e.dead || e.type === 'orb') continue;
+            const nearGround = e.hitY() > this.groundY - 130 * this.scale;
+            if (nearGround && e.x > prevX && e.x <= fx.x) this.superDamage(e);
+          }
+          if (fx.x > this.w + 100) fx.t = 0;
+          break;
+        }
+        default:
+          break; // lightning & rings are pure visuals
+      }
+      if (fx.t <= 0) this.effects.splice(i, 1);
+    }
+  }
+
+  renderEffects(ctx) {
+    for (const fx of this.effects) {
+      switch (fx.type) {
+        case 'lightning': {
+          const a = Math.max(0, fx.t / fx.maxT);
+          for (let pass = 0; pass < 2; pass++) {
+            ctx.strokeStyle = pass === 0 ? `rgba(126,232,250,${0.35 * a})` : `rgba(240,255,255,${0.9 * a})`;
+            ctx.lineWidth = pass === 0 ? 7 : 2.2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            for (let p = 1; p < fx.pts.length; p++) {
+              const [x0, y0] = fx.pts[p - 1];
+              const [x1, y1] = fx.pts[p];
+              ctx.beginPath();
+              ctx.moveTo(x0, y0);
+              const segs = 6;
+              for (let sSeg = 1; sSeg <= segs; sSeg++) {
+                const f = sSeg / segs;
+                const jit = sSeg === segs ? 0 : (Math.random() - 0.5) * 26 * a;
+                ctx.lineTo(x0 + (x1 - x0) * f + jit, y0 + (y1 - y0) * f + jit * 0.6);
+              }
+              ctx.stroke();
+            }
+          }
+          break;
+        }
+        case 'meteor': {
+          const s = this.scale;
+          ctx.fillStyle = '#ffd166';
+          ctx.fillRect(fx.x - 5 * s, fx.y - 5 * s, 10 * s, 10 * s);
+          ctx.fillStyle = '#ff8c42';
+          ctx.fillRect(fx.x - 3 * s, fx.y - 12 * s, 6 * s, 7 * s);
+          break;
+        }
+        case 'windblade': {
+          const s = this.scale;
+          const cy = this.groundY - 55 * s;
+          const a = Math.max(0.25, fx.t / fx.maxT);
+          ctx.save();
+          ctx.translate(fx.x, cy);
+          ctx.globalAlpha = 0.85 * a;
+          ctx.strokeStyle = '#eafcff';
+          ctx.lineCap = 'round';
+          ctx.lineWidth = 5 * s;
+          ctx.beginPath();
+          ctx.arc(-30 * s, 0, 62 * s, -0.85, 0.85);
+          ctx.stroke();
+          ctx.globalAlpha = 0.35 * a;
+          ctx.lineWidth = 12 * s;
+          ctx.beginPath();
+          ctx.arc(-42 * s, 0, 62 * s, -0.7, 0.7);
+          ctx.stroke();
+          // speed lines
+          ctx.globalAlpha = 0.3 * a;
+          ctx.lineWidth = 2 * s;
+          for (let i = 0; i < 3; i++) {
+            const ly = (i - 1) * 26 * s;
+            ctx.beginPath();
+            ctx.moveTo(-70 * s, ly);
+            ctx.lineTo(-150 * s - i * 30 * s, ly);
+            ctx.stroke();
+          }
+          ctx.restore();
+          break;
+        }
+        default:
+          break;
       }
     }
   }
@@ -614,7 +980,7 @@ export class Game {
     const isNewBest = this.score > this.best;
     if (isNewBest) {
       this.best = this.score;
-      localStorage.setItem('quillshot-best', String(this.best));
+      localStorage.setItem(this.bestKey(), String(this.best));
     }
     this.ui.setHudVisible(false);
     this.ui.showGameOver({
@@ -624,6 +990,7 @@ export class Game {
       wave: this.wave,
       wpm: this.wpm(),
       acc: this.acc(),
+      mode: this.diff,
     });
   }
 
@@ -659,6 +1026,10 @@ export class Game {
       this.slowmoT -= dt;
       if (this.slowmoT <= 0 && this.state === 'playing') this.timeScaleTarget = 1;
     }
+    if (this.grace) {
+      this.grace.t -= dt;
+      if (this.grace.t <= 0) this.grace = null;
+    }
 
     // damped-sine shake decays in real time
     this.shakeT += dt;
@@ -681,6 +1052,7 @@ export class Game {
     }
     this.projectiles.update(sdt);
     this.player.update(sdt);
+    this.updateEffects(sdt);
 
     if (this.state !== 'playing') return;
 
@@ -690,7 +1062,7 @@ export class Game {
     if (this.waveDelay > 0) {
       this.waveDelay -= sdt;
     } else if (this.spawnQueue.length) {
-      if (this.enemies.length < 16) {
+      if (this.enemies.length < this.diff.maxAlive) {
         this.spawnT -= sdt;
         if (this.spawnT <= 0) {
           this.spawnEnemy(this.spawnQueue.shift());
@@ -764,6 +1136,7 @@ export class Game {
     for (const e of this.enemies) e.renderBody(ctx);
     if (this.state !== 'over') this.player.render(ctx);
     this.projectiles.render(ctx);
+    this.renderEffects(ctx);
     this.particles.render(ctx);
     for (const e of this.enemies) e.renderTag(ctx);
 

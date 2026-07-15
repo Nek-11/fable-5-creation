@@ -16,6 +16,7 @@ const BODY = {
   flyer: { scale: 0.95, lw: 2.8, tagH: 48, chest: 0 },
   orb: { scale: 1, lw: 2, tagH: 28, chest: 0 },
   boss: { scale: 2.3, lw: 6.5, tagH: 98, chest: 46 },
+  runebearer: { scale: 1, lw: 3.4, tagH: 92, chest: 34 },
 };
 
 export class Enemy {
@@ -91,6 +92,16 @@ export class Enemy {
     this.popT = Math.max(0, this.popT - dt);
     this.staggerT = Math.max(0, this.staggerT - dt);
     this.strikeT = Math.max(0, this.strikeT - dt);
+
+    // runebearers shed golden motes as they walk
+    if (this.type === 'runebearer' && Math.random() < 9 * dt) {
+      g.particles.ember(
+        this.x + (Math.random() - 0.5) * 24 * this.su,
+        this.y - (14 + Math.random() * 46) * this.su,
+        '#ffdf70',
+        36,
+      );
+    }
 
     // burning: emit fire, then take the hit
     if (this.burnT >= 0) {
@@ -223,6 +234,11 @@ export class Enemy {
       case 'brute': this.drawBrute(ctx, su, ink); break;
       case 'bomber': this.drawBomber(ctx, su, t, ink); break;
       case 'boss': this.drawBoss(ctx, su, t, ink); break;
+      case 'runebearer':
+        this.drawRuneAura(ctx, su, t);
+        this.drawWalker(ctx, su, ink);
+        this.drawRuneRing(ctx, su, t);
+        break;
       default: this.drawWalker(ctx, su, ink); break;
     }
 
@@ -473,6 +489,38 @@ export class Enemy {
     ctx.fillRect(hx + 1.6 * su, hy - 2 * su, 2.4 * su, 2.4 * su);
   }
 
+  // soft golden glow behind the runebearer
+  drawRuneAura(ctx, su, t) {
+    const cy = -34 * su;
+    const r = (44 + Math.sin(t * 1.7 + this.id) * 5) * su;
+    const gr = ctx.createRadialGradient(0, cy, 2, 0, cy, r);
+    gr.addColorStop(0, 'rgba(255,223,112,0.22)');
+    gr.addColorStop(1, 'rgba(255,223,112,0)');
+    ctx.fillStyle = gr;
+    ctx.fillRect(-r, cy - r, r * 2, r * 2);
+  }
+
+  // floating ring of pixel runes orbiting the chest
+  drawRuneRing(ctx, su, t) {
+    const cy = -34 * su;
+    const rx = 26 * su;
+    const ry = 9 * su;
+    ctx.fillStyle = '#ffdf70';
+    for (let i = 0; i < 4; i++) {
+      const a = t * 1.9 + (i * Math.PI) / 2 + this.id;
+      const x = Math.cos(a) * rx;
+      const y = cy + Math.sin(a) * ry - Math.sin(t * 2.3 + i) * 2 * su;
+      const s = (Math.sin(a) > 0 ? 4.5 : 3) * su; // fake depth
+      ctx.globalAlpha = Math.sin(a) > 0 ? 0.95 : 0.45;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(a * 0.7);
+      ctx.fillRect(-s / 2, -s / 2, s, s);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // ------------------------------------------------------------------ tag
   renderTag(ctx) {
     const g = this.game;
@@ -496,9 +544,13 @@ export class Enemy {
     if (!word) return;
 
     const isTarget = g.target === this;
+    const isRune = this.type === 'runebearer';
+    // EXTREME cipher tags render in the pixel font, where 0/O and 1/l/I are
+    // genuinely ambiguous at a glance. That is the point.
+    const cipher = g.diff.cipher && this.type !== 'boss';
     const fs = Math.round((isTarget ? 17 : 15) * Math.min(1.25, Math.max(0.85, g.scale)));
-    ctx.font = `600 ${fs}px "JetBrains Mono", monospace`;
-    const cw = ctx.measureText('m').width;
+    ctx.font = cipher ? `${fs}px "Silkscreen", monospace` : `600 ${fs}px "JetBrains Mono", monospace`;
+    const cw = ctx.measureText('0').width + (cipher ? 1.5 : 0);
     const padX = 9;
     const wpx = cw * word.length + padX * 2;
     const hpx = fs + 12;
@@ -514,33 +566,54 @@ export class Enemy {
     pill(ctx, -wpx / 2, -hpx / 2, wpx, hpx, hpx / 2);
     ctx.fillStyle = C.COLORS.tagBg;
     ctx.fill();
-    ctx.lineWidth = isTarget ? 2.5 : 1.5;
+    ctx.lineWidth = isTarget || isRune ? 2.5 : 1.5;
     ctx.strokeStyle = isTarget ? C.COLORS.gold : this.color;
-    ctx.globalAlpha = isTarget ? 1 : 0.75;
+    ctx.globalAlpha = isTarget ? 1 : isRune ? 0.95 : 0.75;
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    if (isTarget) {
+    if (isTarget || isRune) {
       ctx.save();
-      ctx.globalAlpha = 0.28 + 0.14 * Math.sin(g.time * 6.9);
+      ctx.globalAlpha = 0.28 + 0.14 * Math.sin(g.time * (isRune && !isTarget ? 3.4 : 6.9));
       ctx.lineWidth = 6;
       ctx.stroke();
       ctx.restore();
     }
 
-    // word: typed prefix gold, rest ink
+    // runebearer: golden ✦ diamond marks the power word
+    if (isRune) {
+      ctx.save();
+      ctx.translate(-wpx / 2 - 13, 0);
+      ctx.rotate(Math.PI / 4 + g.time * 1.7);
+      ctx.fillStyle = '#ffdf70';
+      ctx.fillRect(-4, -4, 8, 8);
+      ctx.restore();
+    }
+
+    // cipher enemies get a small "!?" hint — trust nothing you read
+    if (cipher) {
+      ctx.font = `700 ${Math.round(fs * 0.55)}px "Silkscreen", monospace`;
+      ctx.fillStyle = '#c69bff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('!?', wpx / 2 + 12, -hpx / 2 + 2);
+      ctx.font = `${fs}px "Silkscreen", monospace`;
+    }
+
+    // word: typed prefix gold, rest ink — chars centered in fixed cells so
+    // the pixel font's uneven advances can't wobble the layout
     ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'center';
     const x0 = -wpx / 2 + padX;
     for (let i = 0; i < word.length; i++) {
       if (i < this.progress) {
-        ctx.fillStyle = C.COLORS.gold;
+        ctx.fillStyle = isRune ? '#ffdf70' : C.COLORS.gold;
       } else {
-        ctx.fillStyle = isTarget ? '#ffffff' : C.COLORS.ink;
+        ctx.fillStyle = isTarget ? '#ffffff' : isRune ? '#ffeeb0' : C.COLORS.ink;
         if (!isTarget) ctx.globalAlpha = 0.85;
       }
       const lift = i === this.progress - 1 && pop > 0 ? -3 * pop : 0;
-      ctx.fillText(word[i], x0 + i * cw, 1 + lift);
+      ctx.fillText(word[i], x0 + (i + 0.5) * cw, 1 + lift);
       ctx.globalAlpha = 1;
     }
 

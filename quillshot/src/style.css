@@ -514,3 +514,84 @@ h2 {
     8px 0 0 -4px var(--ember),
     0 6px 0 rgba(0, 0, 0, 0.4);
 }
+
+/* ---------- difficulty select (start screen) ---------- */
+#mode-select {
+  margin-bottom: 20px;
+}
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.mode-arrow {
+  font-family: "Silkscreen", monospace;
+  opacity: 0.5;
+  font-size: 14px;
+  animation: press-pulse 1.6s ease-in-out infinite;
+}
+
+#modes {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-chip {
+  font-family: "Silkscreen", monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 6px 10px;
+  border: 2px solid rgba(245, 236, 215, 0.25);
+  color: rgba(245, 236, 215, 0.55);
+  cursor: pointer;
+  transition: transform 0.12s, color 0.12s, border-color 0.12s;
+  background: rgba(12, 5, 34, 0.5);
+}
+
+.mode-chip:hover {
+  color: var(--ink);
+  border-color: rgba(245, 236, 215, 0.6);
+}
+
+.mode-chip.sel {
+  transform: translateY(-2px);
+  background: rgba(12, 5, 34, 0.9);
+}
+
+#mode-desc {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.75;
+  min-height: 30px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#mode-best {
+  font-family: "Silkscreen", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--gold);
+  opacity: 0.8;
+  margin-top: 4px;
+  min-height: 14px;
+}
+
+.howto .row.gold {
+  color: var(--gold);
+}
+
+/* mode label in the HUD, subtle */
+#hud-mode {
+  font-family: "Silkscreen", monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.65;
+  background: rgba(12, 5, 34, 0.6);
+  padding: 3px 10px;
+  border-radius: 4px;
+}

@@ -140,3 +140,60 @@ export function pickWord(tier, bannedFirstLetters, rng = Math.random) {
   // banned set covers the whole alphabet (or bad luck) — return anything.
   return bucket[(rng() * bucket.length) | 0];
 }
+
+// ------------------------------------------------------------- EXTREME mode
+// Decipherment torture: strings built from confusable glyph groups. Every
+// character is typable on a standard keyboard; case matters.
+const CONFUSABLES = ['0O', '1lI', '5S', '8B', '2Z'];
+const FILLER = 'aceghjkmnpqrtuvwxy'; // letters that never read as digits
+const TIER_LEN = [
+  [2, 3],
+  [4, 6],
+  [7, 9],
+  [10, 12],
+];
+
+// e.g. "l0Il1", "S5O0B8", "x1I0q"
+export function cipherWord(tier, bannedFirstChars, rng = Math.random) {
+  const [lo, hi] = TIER_LEN[Math.max(0, Math.min(TIER_LEN.length - 1, tier))];
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const len = lo + ((rng() * (hi - lo + 1)) | 0);
+    // one or two confusable groups dominate each word — that's the cruelty
+    const g1 = CONFUSABLES[(rng() * CONFUSABLES.length) | 0];
+    const g2 = CONFUSABLES[(rng() * CONFUSABLES.length) | 0];
+    let w = '';
+    for (let i = 0; i < len; i++) {
+      const r = rng();
+      if (r < 0.42) w += g1[(rng() * g1.length) | 0];
+      else if (r < 0.72) w += g2[(rng() * g2.length) | 0];
+      else {
+        const c = FILLER[(rng() * FILLER.length) | 0];
+        w += rng() < 0.3 ? c.toUpperCase() : c;
+      }
+    }
+    if (!bannedFirstChars.has(w[0])) return w;
+  }
+  return '0O' + FILLER[(rng() * FILLER.length) | 0];
+}
+
+// Short full sentences with punctuation, typed exactly (plain ASCII only).
+const CIPHER_SENTENCES = [
+  'the Owl saw 0 owls.',
+  'I ate 8 Bagels, twice.',
+  'l0se the 1st arrow!',
+  'Zero is 0, not O.',
+  '5 Snakes hiss: S5S.',
+  'B8 the hook, B0b.',
+  'One 1, two 2, go!',
+  'It is I, number 1.',
+  'S0 it g0es.',
+  'call me Il1ad.',
+];
+
+export function cipherSentence(bannedFirstChars, rng = Math.random) {
+  for (let i = 0; i < 30; i++) {
+    const s = CIPHER_SENTENCES[(rng() * CIPHER_SENTENCES.length) | 0];
+    if (!bannedFirstChars.has(s[0])) return s;
+  }
+  return CIPHER_SENTENCES[(rng() * CIPHER_SENTENCES.length) | 0];
+}

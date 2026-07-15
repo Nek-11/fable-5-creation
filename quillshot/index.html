@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;600;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;600;800&family=VT323&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/style.css" />
@@ -32,6 +32,7 @@
             <div class="big" id="wave">1</div>
           </div>
           <div id="typestats"><span id="wpm">0</span> wpm · <span id="acc">100</span>%</div>
+          <div id="hud-mode"></div>
         </div>
         <div id="combo" class="dim">
           <div id="combo-mult">x1</div>
@@ -51,8 +52,21 @@
             <div class="row"><b>type</b> the word above an enemy's head to draw &amp; loose an arrow</div>
             <div class="row">first letter picks your target · finish the word to fire</div>
             <div class="row miss">typo? your archer panics and throws a <b>paper airplane</b>. it has never hurt anyone.</div>
+            <div class="row gold">flawless streaks <b>evolve your weapon</b> · golden <b>runebearers</b> carry power words — finish one to unleash havoc</div>
             <div class="row"><span class="key">1</span><span class="key">2</span><span class="key">3</span> pick boons between waves · <span class="key">esc</span> pause</div>
           </div>
+
+          <!-- difficulty select -->
+          <div id="mode-select">
+            <div class="mode-row">
+              <span class="mode-arrow">←</span>
+              <div id="modes"></div>
+              <span class="mode-arrow">→</span>
+            </div>
+            <div id="mode-desc"></div>
+            <div id="mode-best"></div>
+          </div>
+
           <div class="press">press <span class="key wide">any key</span> to nock an arrow</div>
         </div>
       </div>
@@ -86,6 +100,7 @@
               <div class="res"><div class="label">wave</div><div class="val" id="over-wave">1</div></div>
               <div class="res"><div class="label">wpm</div><div class="val" id="over-wpm">0</div></div>
               <div class="res"><div class="label">accuracy</div><div class="val" id="over-acc">0%</div></div>
+              <div class="res"><div class="label">mode</div><div class="val" id="over-mode">easy</div></div>
             </div>
             <div id="new-best" class="hidden">★ new best! ★</div>
           </div>
