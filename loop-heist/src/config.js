@@ -13,6 +13,7 @@ export const C = {
   // --- fixed timestep ---
   TICK: 1 / 60, // seconds per simulation tick
   MAX_CATCHUP: 5, // max sim steps per animation frame (tab-blur safety)
+  FF_MULT: 3, // fast-forward: 3x as many fixed ticks per frame (hold F/Shift)
 
   // --- the loop ---
   LOOP_SECONDS: 20,

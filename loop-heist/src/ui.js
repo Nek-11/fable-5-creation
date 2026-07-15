@@ -14,6 +14,7 @@ export class UI {
       timerFill: $('timer-fill'),
       timerWrap: $('timer-wrap'),
       timerLabel: $('timer-label'),
+      ff: $('ff-ind'),
       ghosts: $('hud-ghosts'),
       gems: $('hud-gems'),
       hint: $('hintbar'),
@@ -113,13 +114,14 @@ export class UI {
 
   // -------------------------------------------------- HUD
 
-  updateHUD({ levelName, loop, maxGhosts, ghostCount, gems, gemsTotal, frac, low, armed }) {
+  updateHUD({ levelName, loop, maxGhosts, ghostCount, gemStates, frac, low, armed, fast }) {
     this.el.levelName.textContent = levelName;
     this.el.loopNum.textContent = `LOOP ${loop}`;
     this.el.timerFill.style.transform = `scaleX(${frac.toFixed(4)})`;
     this.el.timerWrap.classList.toggle('low', low);
     this.el.timerWrap.classList.toggle('armed', armed);
     this.el.timerLabel.textContent = armed ? 'MOVE TO START THE LOOP' : '';
+    this.el.ff.classList.toggle('hidden', !fast);
 
     // ghost pips
     let gh = '';
@@ -129,9 +131,10 @@ export class UI {
       `<span class="hud-label">GHOSTS</span>${gh}` +
       `<span class="hud-sub">${ghostCount >= maxGhosts ? 'FULL — OLDEST FADES NEXT' : ''}</span>`;
 
+    // per-gem delivery pips:
+    //   dim = at home · amber = carried, outside exit · lit = in the exit
     let gm = '';
-    for (let i = 0; i < gemsTotal; i++)
-      gm += `<span class="gem-pip ${i < gems ? 'on' : ''}"></span>`;
+    for (const st of gemStates) gm += `<span class="gem-pip ${st}"></span>`;
     this.el.gems.innerHTML = `<span class="hud-label">LOOT</span>${gm}`;
   }
 

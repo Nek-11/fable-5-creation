@@ -219,19 +219,6 @@ export class World {
     }
   }
 
-  dropCarried(actor) {
-    let i = 0;
-    for (const g of actor.carried) {
-      g.carrier = null;
-      // deterministic little fan so stacked gems don't overlap exactly
-      g.x = actor.x + (i === 0 ? 0 : i === 1 ? -7 : 7);
-      g.y = actor.y + (i > 0 ? 3 : 0);
-      this.events.push({ type: 'drop', x: g.x, y: g.y });
-      i++;
-    }
-    actor.carried.length = 0;
-  }
-
   // ------------------------------------------------------ per-tick update
   // actors: every plate-pressing body, ghosts first then the player.
 
@@ -459,10 +446,12 @@ export class World {
   }
 
   // ------------------------------------------------------ exit
+  // Works for the player AND for ghosts: the heist completes when every gem
+  // is carried by somebody standing inside the exit zone at the same moment.
 
-  playerAtExit(p) {
-    const tx = Math.floor(p.x / T);
-    const ty = Math.floor(p.y / T);
+  actorAtExit(a) {
+    const tx = Math.floor(a.x / T);
+    const ty = Math.floor(a.y / T);
     return this.exits.some((e) => e.tx === tx && e.ty === ty);
   }
 
@@ -470,12 +459,32 @@ export class World {
   // RENDERING
   // ================================================================
 
+  // tiles that gameplay elements live on — decorations must stay clear
+  buildOccupied() {
+    const occ = new Set();
+    const add = (tx, ty) => occ.add(ty * this.cols + tx);
+    add(Math.floor(this.start.x / T), Math.floor(this.start.y / T));
+    for (const e of this.exits) add(e.tx, e.ty);
+    for (const p of this.plates) add(p.tx, p.ty);
+    for (const s of this.switches) add(s.tx, s.ty);
+    for (const gm of this.gems) add(Math.floor(gm.hx / T), Math.floor(gm.hy / T));
+    for (const d of this.doors) for (const tl of d.tiles) add(tl.tx, tl.ty);
+    for (const l of this.lasers) for (const tl of l.tiles) add(tl.tx, tl.ty);
+    return occ;
+  }
+
   buildBackground(ts) {
     const c = document.createElement('canvas');
     c.width = this.w;
     c.height = this.h;
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
+
+    const acc = this.def.accent ?? { rug: '#2a2338', trim: '#4a3f66', deco: '#8c2f39' };
+    const occ = this.buildOccupied();
+    const plainFloor = (tx, ty) =>
+      tx >= 0 && ty >= 0 && tx < this.cols && ty < this.rows &&
+      this.grid[ty * this.cols + tx] === 0 && !occ.has(ty * this.cols + tx);
 
     for (let ty = 0; ty < this.rows; ty++) {
       for (let tx = 0; tx < this.cols; tx++) {
@@ -493,6 +502,76 @@ export class World {
         }
       }
     }
+
+    // ---- rugs: up to 3, laid on clear 3x2 (or 2x2) floor patches ----
+    const rugCells = new Set();
+    let rugs = 0;
+    for (let ty = 1; ty < this.rows - 2 && rugs < 3; ty++) {
+      for (let tx = 1; tx < this.cols - 3 && rugs < 3; tx++) {
+        if (ts.hash(tx * 7 + 3, ty * 5 + 1) < 0.82) continue;
+        const wide = ts.hash(tx, ty * 3) > 0.5 ? 3 : 2;
+        let clear = true;
+        for (let dy = 0; dy < 2 && clear; dy++)
+          for (let dx = 0; dx < wide && clear; dx++) {
+            const id = (ty + dy) * this.cols + (tx + dx);
+            if (!plainFloor(tx + dx, ty + dy) || rugCells.has(id)) clear = false;
+          }
+        if (!clear) continue;
+        ts.deco.drawRug(g, tx * T, ty * T, wide, 2, acc);
+        for (let dy = 0; dy < 2; dy++)
+          for (let dx = 0; dx < wide; dx++) rugCells.add((ty + dy) * this.cols + (tx + dx));
+        rugs++;
+      }
+    }
+
+    // ---- mosaic inlays on lonely floor tiles ----
+    for (let ty = 1; ty < this.rows - 1; ty++) {
+      for (let tx = 1; tx < this.cols - 1; tx++) {
+        const id = ty * this.cols + tx;
+        const hv = ts.hash(tx * 3 + 11, ty * 9 + 4);
+        if (hv > 0.94 && plainFloor(tx, ty) && !rugCells.has(id)) {
+          ts.deco.drawMosaic(g, tx * T, ty * T, acc);
+        }
+      }
+    }
+
+    // ---- paintings & banners on south-facing wall faces ----
+    for (let ty = 0; ty < this.rows - 1; ty++) {
+      for (let tx = 1; tx < this.cols - 1; tx++) {
+        if (this.grid[ty * this.cols + tx] !== 1) continue;
+        if (this.grid[(ty + 1) * this.cols + tx] !== 0) continue; // needs floor below
+        if (this.doorAt.has((ty + 1) * this.cols + tx)) continue; // keep doors clean
+        const hv = ts.hash(tx * 13 + 5, ty * 17 + 2);
+        if (hv > 0.86) ts.deco.drawPainting(g, tx * T, ty * T, acc, ((hv * 100) | 0) % 3);
+        else if (hv > 0.8) ts.deco.drawBanner(g, tx * T, ty * T, acc);
+      }
+    }
+
+    // ---- wall sconces + warm glow pools (also collected for flicker) ----
+    this.lamps = [];
+    let lastLamp = -99;
+    for (let ty = 0; ty < this.rows - 1; ty++) {
+      for (let tx = 1; tx < this.cols - 1; tx++) {
+        if (this.grid[ty * this.cols + tx] !== 1) continue;
+        if (this.grid[(ty + 1) * this.cols + tx] !== 0) continue;
+        if (this.doorAt.has((ty + 1) * this.cols + tx)) continue;
+        const hv = ts.hash(tx * 29 + 1, ty * 23 + 7);
+        const id = ty * this.cols + tx;
+        if (hv > 0.62 && hv <= 0.8 && id - lastLamp > 4) {
+          lastLamp = id;
+          ts.deco.drawSconce(g, tx * T, ty * T);
+          const lx = tx * T + T / 2;
+          const ly = (ty + 1) * T + 4;
+          const grad = g.createRadialGradient(lx, ly, 2, lx, ly, 20);
+          grad.addColorStop(0, 'rgba(255,214,140,0.20)');
+          grad.addColorStop(1, 'rgba(255,214,140,0)');
+          g.fillStyle = grad;
+          g.fillRect(lx - 20, ly - 12, 40, 26);
+          this.lamps.push({ x: lx, y: ly });
+        }
+      }
+    }
+
     // wall drop-shadows on floor below
     g.fillStyle = 'rgba(0,0,0,0.32)';
     for (let ty = 1; ty < this.rows; ty++) {
@@ -514,6 +593,15 @@ export class World {
   }
 
   drawFloorLayer(g, ts, tick) {
+    // lamp flicker over the baked glow pools
+    if (this.lamps) {
+      for (let i = 0; i < this.lamps.length; i++) {
+        const lp = this.lamps[i];
+        const a = 0.05 + 0.04 * Math.sin(tick * 0.11 + i * 2.7) + 0.02 * Math.sin(tick * 0.31 + i);
+        g.fillStyle = `rgba(255,214,140,${Math.max(0, a).toFixed(3)})`;
+        g.fillRect(lp.x - 8, lp.y - 6, 16, 12);
+      }
+    }
     // plates
     for (const p of this.plates) {
       const on = p.pressed || p.timer > 0;

@@ -8,6 +8,7 @@ export class AudioEngine {
     this.muted = false;
     this._musicOn = false;
     this._tension = 0;
+    this._fast = false; // fast-forward: quicker, brighter groove
   }
 
   // Must be called from a user gesture.
@@ -73,6 +74,18 @@ export class AudioEngine {
     if (this.musicFilter)
       this.musicFilter.frequency.setTargetAtTime(1800 + t * 3600, this.ctx.currentTime, 0.2);
   }
+  // fast-forward feel: tempo + pitch nudge up, hats denser, filter brighter.
+  // Music only — the deterministic sim never touches audio.
+  setFast(on) {
+    this._fast = on;
+    if (this.musicFilter && this.ctx)
+      this.musicFilter.frequency.setTargetAtTime(
+        (1800 + this._tension * 3600) * (on ? 1.3 : 1),
+        this.ctx.currentTime,
+        0.1,
+      );
+  }
+
   duckMusic(sec = 1.0) {
     if (!this.musicBus) return;
     const t = this.ctx.currentTime;
@@ -87,11 +100,12 @@ export class AudioEngine {
     while (this.nextStepTime < this.ctx.currentTime + ahead) {
       this.playStep(this.stepIndex, this.nextStepTime);
       this.stepIndex = (this.stepIndex + 1) % 32; // two bars
-      this.nextStepTime += this.step16;
+      this.nextStepTime += this.step16 / (this._fast ? 1.18 : 1);
     }
   }
 
   playStep(i, t) {
+    const pitch = this._fast ? 1.13 : 1;
     // swung 16ths: push every off-16th late
     if (i % 2 === 1) t += this.step16 * 0.28;
 
@@ -101,17 +115,17 @@ export class AudioEngine {
       A1, 0, 0, A1, 0, 0, C2, 0, A1, 0, 0, G1, 0, E2, 0, 0,
       F1, 0, 0, F1, 0, 0, A1, 0, G1, 0, 0, E1, 0, G1, 0, D2,
     ][i];
-    if (bass) this.pluck(bass, t, 0.22, 0.16);
+    if (bass) this.pluck(bass * pitch, t, 0.22, 0.16);
 
     // soft kick pulse on the 1 and 3
     if (i % 8 === 0) this.kick(t, 0.11);
 
-    // closed hats on the off-beats, denser under tension
-    if (i % 4 === 2 || (this._tension > 0.6 && i % 2 === 0)) this.hat(t, 0.028);
+    // closed hats on the off-beats, denser under tension or fast-forward
+    if (i % 4 === 2 || ((this._tension > 0.6 || this._fast) && i % 2 === 0)) this.hat(t, 0.028);
 
     // sparse vibraphone stab, first beat of bar 2
-    if (i === 16) this.stab([220, 261.63, 329.63], t, 0.05);
-    if (i === 28 && this._tension > 0.3) this.stab([246.94, 293.66], t, 0.04);
+    if (i === 16) this.stab([220 * pitch, 261.63 * pitch, 329.63 * pitch], t, 0.05);
+    if (i === 28 && this._tension > 0.3) this.stab([246.94 * pitch, 293.66 * pitch], t, 0.04);
   }
 
   pluck(freq, t, dur, vol) {
@@ -238,9 +252,6 @@ export class AudioEngine {
   }
   ghostGem() {
     this.blip(520, 0.1, 'sine', 0.05, 700);
-  }
-  gemDrop() {
-    this.blip(500, 0.1, 'sine', 0.08, 330);
   }
   denied() {
     this.blip(220, 0.09, 'square', 0.12, 180);

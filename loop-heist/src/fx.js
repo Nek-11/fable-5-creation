@@ -71,9 +71,6 @@ export class FX {
   ghostSpawnPuff(x, y) {
     this.spawn(12, x, y, { color: [PAL.ghost, '#bdf6ff', '#5ce8ff'], speed: 28, life: 0.6, size: 1 });
   }
-  dropPuff(x, y) {
-    this.spawn(6, x, y, { color: [PAL.ghost, '#ffffff'], speed: 20, life: 0.35 });
-  }
   winBurst(x, y) {
     this.spawn(40, x, y, { color: [PAL.gold, PAL.exit, PAL.ghost, '#ffffff', PAL.magentaGem], speed: 80, life: 1.1, up: 40, grav: 70, size: 2 });
     this.whiteFlash = 0.5;

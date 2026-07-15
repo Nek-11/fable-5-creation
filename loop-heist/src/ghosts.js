@@ -3,6 +3,11 @@
 // sim is a fixed-timestep pure function, a ghost retraces its run exactly
 // (as long as the world around it behaves the same — changing door timing
 // CAN make a ghost bump into a door; that is part of the fiction).
+//
+// When its recording ends, a ghost holds its final position for the rest
+// of every loop — still pressing plates, still CARRYING its loot. Parking
+// a loot-carrying ghost inside the exit zone is the core heist technique:
+// the job completes when every gem is in the getaway zone at once.
 import { makeActor, stepActor } from './player.js';
 
 export class Ghost {
@@ -13,7 +18,6 @@ export class Ghost {
     this.a = makeActor(startX, startY);
     this.idx = 0;
     this.done = false;
-    this.justDropped = false;
   }
 
   // reset to the start of the loop (called every run)
@@ -28,14 +32,10 @@ export class Ghost {
     a.onSwitch = -1;
     this.idx = 0;
     this.done = false;
-    this.justDropped = false;
   }
 
-  // one fixed tick. When the recording runs out the ghost goes idle where
-  // it stands — still pressing plates — and drops any loot it carried
-  // (that dropped loot is the "ghost relay" mechanic).
+  // one fixed tick
   step(world) {
-    this.justDropped = false;
     if (this.done) {
       this.a.moving = false;
       return;
@@ -48,10 +48,6 @@ export class Ghost {
     if (this.idx >= this.rec.length) {
       this.done = true;
       this.a.moving = false;
-      if (this.a.carried.length > 0) {
-        world.dropCarried(this.a);
-        this.justDropped = true;
-      }
     }
   }
 }

@@ -49,6 +49,8 @@ export class Game {
 
     this.acc = 0;
     this.animT = 0; // presentation clock (never read by the sim)
+    this.fast = false; // fast-forward held (changes ticks-per-frame only)
+    this.idleT = 0; // how long the player has stood still (visual only)
 
     // attract-mode backdrop for title/select
     this.backdrop = new World(LEVELS[4]);
@@ -225,16 +227,29 @@ export class Game {
   update(dt) {
     if (!SIM_STATES.has(this.state)) {
       this.acc = 0;
+      this.setFast(false);
       return;
     }
-    this.acc += dt;
+    // FAST-FORWARD: holding F/Shift runs 3x as many fixed ticks per frame.
+    // Every tick still samples + records the input mask exactly as at
+    // normal speed, so a fast-forwarded run replays identically and ghosts,
+    // guards, doors and the loop clock all accelerate together.
+    this.setFast(this.input.fast());
+    const mult = this.fast ? C.FF_MULT : 1;
+    this.acc += dt * mult;
     let n = 0;
-    while (this.acc >= C.TICK && n < C.MAX_CATCHUP) {
+    while (this.acc >= C.TICK && n < C.MAX_CATCHUP * mult) {
       this.stepTick();
       this.acc -= C.TICK;
       n++;
     }
     if (this.acc > C.TICK) this.acc = C.TICK; // drop backlog, never spiral
+  }
+
+  setFast(on) {
+    if (on === this.fast) return;
+    this.fast = on;
+    this.audio.setFast(on);
   }
 
   stepTick() {
@@ -295,17 +310,26 @@ export class Game {
       return;
     }
 
-    // exit
+    // exit — TEAM DELIVERY: the heist completes when the player stands in
+    // the exit and every gem is carried by somebody who is ALSO inside the
+    // exit zone right now (the player, or ghosts parked/passing through).
     if (this.deniedCd > 0) this.deniedCd--;
-    if (this.world.playerAtExit(this.player)) {
-      if (this.player.carried.length >= this.world.gems.length) {
+    if (this.world.actorAtExit(this.player)) {
+      let covered = this.player.carried.length;
+      for (const gh of this.ghosts) {
+        if (this.world.actorAtExit(gh.a)) covered += gh.a.carried.length;
+      }
+      if (covered >= this.world.gems.length) {
         this.winLevel();
         return;
       }
       if (this.deniedCd === 0) {
         this.deniedCd = 70;
         this.audio.denied();
-        this.ui.toast(`NEED ALL THE LOOT — ${this.player.carried.length}/${this.world.gems.length}`);
+        const missing = this.world.gems.length - covered;
+        this.ui.toast(
+          `${missing} GEM${missing > 1 ? 'S' : ''} STILL OUT — GET EVERY CARRIER INTO THE EXIT`,
+        );
       }
     }
 
@@ -331,10 +355,6 @@ export class Game {
         case 'ghostGem':
           this.audio.ghostGem();
           this.fx.ghostGemBurst(e.x, e.y);
-          break;
-        case 'drop':
-          this.audio.gemDrop();
-          this.fx.dropPuff(e.x, e.y);
           break;
         case 'plateOn':
           this.audio.plateOn();
@@ -386,16 +406,14 @@ export class Game {
     g.drawImage(this.bg, 0, 0);
     this.world.drawFloorLayer(g, this.ts, visTick);
 
-    // loose gems (home or ghost-dropped)
+    // loose gems (waiting on their pedestals)
     for (const gem of this.world.gems) {
       if (gem.carrier) continue;
       const bob = Math.sin(this.animT * 2.3 + gem.kind * 1.7) * 1.5;
-      g.drawImage(this.ts.gems[gem.kind % 3], Math.round(gem.x - 8), Math.round(gem.y - 10 + bob));
-      // glint
-      if (((visTick + gem.kind * 37) % 130) < 8) {
-        g.fillStyle = 'rgba(255,255,255,0.9)';
-        g.fillRect(Math.round(gem.x - 4), Math.round(gem.y - 8 + bob), 1, 1);
-      }
+      const gx = Math.round(gem.x - 8);
+      const gy = Math.round(gem.y - 10 + bob);
+      g.drawImage(this.ts.gems[gem.kind % 3], gx, gy);
+      drawSparkle(g, gx, gy, visTick + gem.kind * 53);
     }
 
     this.world.drawVisionCones(g, this.state === 'dead');
@@ -418,11 +436,23 @@ export class Game {
       this.drawCarried(g, a, alpha);
     }
 
-    // the player
+    // the player (with a little idle life: beanie-bob + glancing around)
+    if (this.player.moving || this.state !== 'play') this.idleT = 0;
+    else this.idleT += dt;
     if (this.state !== 'rewind') {
       const flash = this.state === 'dead' && this.deadT % 8 < 4;
       if (!flash) {
-        this.drawSheet(g, this.ts.playerSheet, this.player.dir, actorFrame(this.player), this.player.x, this.player.y, 1);
+        let pdir = this.player.dir;
+        let py = this.player.y;
+        if (this.idleT > 0.4) {
+          if (((this.animT * 1.3) % 1) > 0.55) py -= 1; // idle bob
+          const glance = (this.animT % 5.2) / 5.2;
+          if (this.idleT > 1.6) {
+            if (glance > 0.62 && glance < 0.76) pdir = 2; // look left...
+            else if (glance > 0.8 && glance < 0.94) pdir = 3; // ...then right
+          }
+        }
+        this.drawSheet(g, this.ts.playerSheet, pdir, actorFrame(this.player), this.player.x, py, 1);
         this.drawCarried(g, this.player, 1);
       }
     }
@@ -434,18 +464,24 @@ export class Game {
     this.fx.drawFlashes(g, w, h);
     g.restore();
 
-    // HUD
+    // HUD — per-gem delivery status:
+    //   'home' = still on its pedestal, 'out' = carried by a heister who is
+    //   not in the exit, 'in' = inside the getaway zone right now.
+    const gemStates = this.world.gems.map((gem) => {
+      if (!gem.carrier) return 'home';
+      return this.world.actorAtExit(gem.carrier) ? 'in' : 'out';
+    });
     const remaining = Math.max(0, C.LOOP_TICKS - this.tick);
     this.ui.updateHUD({
       levelName: `${String(this.levelIndex + 1).padStart(2, '0')} ${LEVELS[this.levelIndex].name.toUpperCase()}`,
       loop: this.loops,
       maxGhosts: LEVELS[this.levelIndex].maxGhosts,
       ghostCount: this.ghosts.length,
-      gems: this.player.carried.length,
-      gemsTotal: this.world.gems.length,
+      gemStates,
       frac: remaining / C.LOOP_TICKS,
       low: remaining <= 180 && this.state === 'play',
       armed: this.armed && this.state === 'play',
+      fast: this.fast && this.state === 'play',
     });
   }
 
@@ -524,4 +560,21 @@ function walkFrame(gd) {
   if (!gd.moving) return 0;
   const phase = Math.floor(gd.animDist / 5) % 4;
   return phase === 1 ? 1 : phase === 3 ? 2 : 0;
+}
+
+// a little 4-point star that sweeps across gems every couple of seconds
+function drawSparkle(g, gx, gy, t) {
+  const phase = t % 150;
+  if (phase >= 14) return;
+  const f = phase < 5 ? 0 : phase < 10 ? 1 : 0;
+  const x = ((t / 150) | 0) % 2 === 0 ? gx + 3 : gx + 10;
+  const y = gy + (((t / 150) | 0) % 3 === 0 ? 2 : 6);
+  g.fillStyle = 'rgba(255,255,255,0.95)';
+  g.fillRect(x, y, 1, 1);
+  if (f === 1) {
+    g.fillRect(x - 1, y, 1, 1);
+    g.fillRect(x + 1, y, 1, 1);
+    g.fillRect(x, y - 1, 1, 1);
+    g.fillRect(x, y + 1, 1, 1);
+  }
 }

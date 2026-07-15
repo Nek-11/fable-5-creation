@@ -33,12 +33,20 @@ const MOVE_KEYS = new Map([
   ['KeyD', C.RIGHT], ['ArrowRight', C.RIGHT],
 ]);
 
+const FF_KEYS = ['KeyF', 'ShiftLeft', 'ShiftRight'];
+
 const input = {
   // sampled exactly once per fixed tick by the sim
   mask() {
     let m = 0;
     for (const [code, bit] of MOVE_KEYS) if (held.has(code)) m |= bit;
     return m;
+  },
+  // fast-forward is NOT part of the recorded input — it only changes how
+  // many fixed ticks run per rendered frame, so replays are identical
+  fast() {
+    for (const k of FF_KEYS) if (held.has(k)) return true;
+    return false;
   },
 };
 
@@ -64,6 +72,10 @@ window.addEventListener('keydown', (e) => {
       const bit = MOVE_KEYS.get(e.code);
       game.handleAction(bit === C.LEFT ? 'left' : bit === C.RIGHT ? 'right' : bit === C.UP ? 'up' : 'down');
     }
+    return;
+  }
+  if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+    held.add(e.code); // fast-forward while held
     return;
   }
   if (e.repeat) return;

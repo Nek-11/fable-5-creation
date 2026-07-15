@@ -16,8 +16,9 @@ function mk(w, h) {
 // tiny deterministic hash for texture detail (visual only, never in the sim)
 function hash(x, y) {
   let h = (x * 374761393 + y * 668265263) | 0;
-  h = (h ^ (h >> 13)) * 1274126177;
-  return ((h ^ (h >> 16)) >>> 0) / 4294967296;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
 }
 
 // ---------------------------------------------------------------- tiles
@@ -288,6 +289,116 @@ function drawGem(g, ox, oy, kind) {
   px(8, 6, 1, 4, cols[2]);
 }
 
+// ------------------------------------------------------------ decorations
+// Per-level accent colours make each heist feel like a different wing of
+// the museum. Everything here is baked into the static background canvas.
+
+function drawRug(g, x, y, wTiles, hTiles, acc) {
+  const w = wTiles * T;
+  const h = hTiles * T;
+  g.fillStyle = acc.rug;
+  g.fillRect(x + 2, y + 2, w - 4, h - 4);
+  g.fillStyle = acc.trim;
+  g.fillRect(x + 2, y + 2, w - 4, 1);
+  g.fillRect(x + 2, y + h - 3, w - 4, 1);
+  g.fillRect(x + 2, y + 2, 1, h - 4);
+  g.fillRect(x + w - 3, y + 2, 1, h - 4);
+  // fringe
+  g.fillStyle = 'rgba(255,255,255,0.10)';
+  for (let k = x + 4; k < x + w - 4; k += 4) {
+    g.fillRect(k, y + 1, 2, 1);
+    g.fillRect(k, y + h - 2, 2, 1);
+  }
+  // diamond medallion
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  g.fillStyle = acc.trim;
+  g.fillRect(cx - 4, cy - 1, 8, 2);
+  g.fillRect(cx - 1, cy - 4, 2, 8);
+  g.fillRect(cx - 2, cy - 2, 4, 4);
+  g.fillStyle = acc.rug;
+  g.fillRect(cx - 1, cy - 1, 2, 2);
+  // corner dots
+  g.fillStyle = 'rgba(255,255,255,0.14)';
+  g.fillRect(x + 4, y + 4, 1, 1);
+  g.fillRect(x + w - 5, y + 4, 1, 1);
+  g.fillRect(x + 4, y + h - 5, 1, 1);
+  g.fillRect(x + w - 5, y + h - 5, 1, 1);
+}
+
+function drawMosaic(g, x, y, acc) {
+  g.save();
+  g.globalAlpha = 0.5;
+  g.fillStyle = 'rgba(255,255,255,0.05)';
+  g.fillRect(x + 4, y + 4, 8, 8);
+  g.fillStyle = acc.trim;
+  g.fillRect(x + 7, y + 5, 2, 6);
+  g.fillRect(x + 5, y + 7, 6, 2);
+  g.fillStyle = acc.rug;
+  g.fillRect(x + 7, y + 7, 2, 2);
+  g.restore();
+}
+
+function drawPainting(g, x, y, acc, v) {
+  // gilded frame on the wall face
+  g.fillStyle = '#0c1020';
+  g.fillRect(x + 3, y + 6, 10, 8);
+  g.fillStyle = '#b8913a';
+  g.fillRect(x + 3, y + 6, 10, 1);
+  g.fillRect(x + 3, y + 13, 10, 1);
+  g.fillRect(x + 3, y + 6, 1, 8);
+  g.fillRect(x + 12, y + 6, 1, 8);
+  // the "art": landscape / portrait / abstract, by variant
+  if (v === 0) {
+    g.fillStyle = '#27436e';
+    g.fillRect(x + 4, y + 7, 8, 6);
+    g.fillStyle = acc.deco;
+    g.fillRect(x + 5, y + 10, 3, 2);
+    g.fillStyle = '#e8d9a0';
+    g.fillRect(x + 10, y + 8, 1, 1);
+  } else if (v === 1) {
+    g.fillStyle = '#3a2d3f';
+    g.fillRect(x + 4, y + 7, 8, 6);
+    g.fillStyle = PAL.skin;
+    g.fillRect(x + 7, y + 8, 2, 2);
+    g.fillStyle = acc.deco;
+    g.fillRect(x + 6, y + 10, 4, 2);
+  } else {
+    g.fillStyle = '#1c2a24';
+    g.fillRect(x + 4, y + 7, 8, 6);
+    g.fillStyle = acc.deco;
+    g.fillRect(x + 5, y + 8, 2, 4);
+    g.fillStyle = '#7fd8e8';
+    g.fillRect(x + 9, y + 9, 2, 2);
+  }
+}
+
+function drawBanner(g, x, y, acc) {
+  g.fillStyle = '#0c1020';
+  g.fillRect(x + 4, y + 5, 8, 1); // rod
+  g.fillStyle = acc.deco;
+  g.fillRect(x + 5, y + 6, 6, 8);
+  g.fillRect(x + 5, y + 14, 2, 1);
+  g.fillRect(x + 9, y + 14, 2, 1);
+  g.fillStyle = 'rgba(255,255,255,0.22)';
+  g.fillRect(x + 6, y + 8, 4, 1);
+  g.fillRect(x + 7, y + 10, 2, 1);
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  g.fillRect(x + 5, y + 12, 6, 1);
+}
+
+function drawSconce(g, x, y) {
+  // little brass lamp low on the wall face
+  g.fillStyle = '#3a2f16';
+  g.fillRect(x + 6, y + 11, 4, 3);
+  g.fillStyle = '#b8913a';
+  g.fillRect(x + 6, y + 11, 4, 1);
+  g.fillStyle = '#ffe9a3';
+  g.fillRect(x + 7, y + 12, 2, 2);
+  g.fillStyle = '#fff7d9';
+  g.fillRect(x + 7, y + 12, 1, 1);
+}
+
 // ---------------------------------------------------------------- build
 
 export function buildTileset() {
@@ -347,5 +458,13 @@ export function buildTileset() {
     gems.push(c);
   }
 
-  return { tiles, playerSheet, ghostSheet, guardSheet, gems, hash };
+  return {
+    tiles,
+    playerSheet,
+    ghostSheet,
+    guardSheet,
+    gems,
+    hash,
+    deco: { drawRug, drawMosaic, drawPainting, drawBanner, drawSconce },
+  };
 }
