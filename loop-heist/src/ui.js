@@ -15,6 +15,7 @@ export class UI {
       timerWrap: $('timer-wrap'),
       timerLabel: $('timer-label'),
       ff: $('ff-ind'),
+      carry: $('carry-hint'),
       ghosts: $('hud-ghosts'),
       gems: $('hud-gems'),
       hint: $('hintbar'),
@@ -112,9 +113,16 @@ export class UI {
     );
   }
 
+  // jump between the two 5-row columns of the select grid
+  hopColumn(dir) {
+    const target = this.selIndex + dir * 5;
+    const max = this.progress().unlocked - 1;
+    if (target >= 0 && target <= max) this.setSelIndex(target, false);
+  }
+
   // -------------------------------------------------- HUD
 
-  updateHUD({ levelName, loop, maxGhosts, ghostCount, gemStates, frac, low, armed, fast }) {
+  updateHUD({ levelName, loop, maxGhosts, ghostCount, gemStates, frac, low, armed, fast, carrying }) {
     this.el.levelName.textContent = levelName;
     this.el.loopNum.textContent = `LOOP ${loop}`;
     this.el.timerFill.style.transform = `scaleX(${frac.toFixed(4)})`;
@@ -122,6 +130,7 @@ export class UI {
     this.el.timerWrap.classList.toggle('armed', armed);
     this.el.timerLabel.textContent = armed ? 'MOVE TO START THE LOOP' : '';
     this.el.ff.classList.toggle('hidden', !fast);
+    this.el.carry.classList.toggle('hidden', !carrying);
 
     // ghost pips
     let gh = '';

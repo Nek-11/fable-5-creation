@@ -3,10 +3,16 @@
 // Map legend
 //   #  wall            .  floor           x  glass display case (solid,
 //   P  player start    E  exit zone          blocks walking, NOT guard vision)
-//   g  gem             a b c  pressure plates
+//   g  gem             a b c d e  pressure plates
 //   s t  toggle switches
+//   k  pushable crate (sokoban: one tile per shove; holds plates down,
+//      blocks laser beams and guard vision; resets home every loop)
 //   A B V ...  door tiles, controlled via `links` below
 //   l  blinking laser gate   L  always-on laser gate
+//
+// SPACE throws the top carried gem ~3 tiles in the facing direction: it
+// sails OVER lasers, cases and crates, stops at walls/closed doors, and any
+// heister (including a parked ghost) standing where it lands catches it.
 //
 // Link types
 //   hold   door is open only while a linked plate is held down
@@ -258,5 +264,252 @@ export const LEVELS = [
     },
     lasers: { period: 200, on: 120, stagger: 66 }, // travelling-wave blink
     guards: [],
+  },
+
+  // ------------------------------------------------------------------
+  // LEVEL 6 — "Special Delivery"
+  // Teaches: THROWING. A static laser wall splits the museum; the only way
+  // across on foot is the blinking gate up top. Door A (exit pocket) needs
+  // plate a held — and with a ONE-ghost cap, your single past self has to
+  // do two jobs: hurl the gem over the laser wall, then go hold the plate.
+  //
+  // SOLUTION (2 loops):
+  //   Loop 1: down the left wing, grab the gem (3,6), walk east to (9,6),
+  //           keep facing the laser wall and press SPACE — the gem sails
+  //           over the L column and lands at (12,6). Then back west and
+  //           south onto plate a (3,8); press R standing on it (~7 s).
+  //   Loop 2: east along row 1, wait out the blinking gate (10,1-2), down
+  //           col 12 to the landing spot — your ghost re-throws it to you
+  //           every loop (~3 s) — grab it, continue east through door A
+  //           (held from ~7 s) and stand on E (17,6) with the gem. ~9 s.
+  // ------------------------------------------------------------------
+  {
+    name: 'Special Delivery',
+    hint: 'Loot flies OVER lasers: face them, press SPACE. One ghost, two jobs — throw the gem across, then hold the plate.',
+    maxGhosts: 1,
+    accent: { rug: '#3a2a14', trim: '#8a5f24', deco: '#c07830' },
+    map: [
+      '####################',
+      '#P........l........#',
+      '#.........l........#',
+      '#..xx.....#........#',
+      '#..xx.....L....#####',
+      '#.........L....#...#',
+      '#..g......L....A.E.#',
+      '#.........L....#...#',
+      '#..a......L....#####',
+      '#.........L........#',
+      '#.........L........#',
+      '####################',
+    ],
+    links: {
+      A: { type: 'hold', srcs: ['a'] },
+    },
+    lasers: { period: 170, on: 95, stagger: 0 },
+    guards: [],
+  },
+
+  // ------------------------------------------------------------------
+  // LEVEL 7 — "Heavy Lifting"
+  // Teaches: CRATES. The vault door A wants plate a held, but there is a
+  // crate: shove it six tiles down the lane and it holds the plate FOREVER
+  // (well — until the rewind, when your ghost re-shoves it). The watchman
+  // patrols straight across the push lane; conveniently, the crate you are
+  // pushing blocks his view of you.
+  //
+  // SOLUTION (1 careful loop; ghosts optional):
+  //   Grab the west gem (2,4), then push the crate (3,6) east along row 6
+  //   — pause behind it whenever the guard (col 11) sweeps past, the crate
+  //   hides you — until it sits on plate a (9,6). Door A opens for good.
+  //   Slip across his column behind his back, through A (14,4), grab the
+  //   vault gem (16,2), and stand on E (16,7) with both. ~14 s.
+  //   Prefer the crew? Loop 1: push the crate + R. Loop 2: just loot.
+  // ------------------------------------------------------------------
+  {
+    name: 'Heavy Lifting',
+    hint: 'Crates shove one tile per push. Park one on the plate and no ghost ever has to hold it — it hides you, too.',
+    maxGhosts: 2,
+    accent: { rug: '#33270f', trim: '#6d5838', deco: '#8a734b' },
+    map: [
+      '####################',
+      '#P...#........#....#',
+      '#....#........#.g..#',
+      '#....#...##...#....#',
+      '#.g..#...##...A....#',
+      '#....#........#....#',
+      '#..k.....a....#....#',
+      '#....#........#.E..#',
+      '#....#...##...#....#',
+      '#....#...##...#....#',
+      '#....#........#....#',
+      '####################',
+    ],
+    links: {
+      A: { type: 'hold', srcs: ['a'] },
+    },
+    guards: [
+      // sweeps the middle yard, straight across the crate lane
+      { path: [ [11, 2], [11, 9] ], speed: 31 },
+    ],
+  },
+
+  // ------------------------------------------------------------------
+  // LEVEL 8 — "The Long Toss"
+  // The bucket brigade. Two static laser fences split the museum into
+  // west | mid | east. The bottom corridor's timed doors C and D only have
+  // pads on their EAST side — you can always go west, never come back.
+  // The far gem can only travel east the way loot should: thrown, zone to
+  // zone, ghost to ghost.
+  //
+  // SOLUTION (3 loops):
+  //   Loop 1 (west thrower): west along the corridor — pad d (11,10) opens
+  //           D, pad c (6,10) opens C — up the west wing, grab gem A (1,1),
+  //           stand at (4,3) facing east, SPACE: it sails over the first
+  //           fence and lands at (7,3). Press R (~7 s); this ghost stays
+  //           walled off in the west, forever tossing.
+  //   Loop 2 (mid catcher): pad d, through D, up the mid lane to (7,3);
+  //           the gem lands on you (~7 s) — you catch it — step east to
+  //           (9,3), face east, SPACE: over the second fence to (12,3).
+  //           Press R (~8.5 s).
+  //   Loop 3 (you): no doors needed. North up col 17, grab gem B (15,2)
+  //           from below, wait at (12,3); the brigade delivers gem A at
+  //           ~9 s; take it, then south around the booth — (12,7), west to
+  //           (15,6) — and onto E (14,6) with both gems. ~12 s. (Hold F.)
+  // ------------------------------------------------------------------
+  {
+    name: 'The Long Toss',
+    hint: 'Doors here only open from the east — loot can only come BACK by air. Build a throwing chain of past-yous.',
+    maxGhosts: 4,
+    accent: { rug: '#16321e', trim: '#2f7a4a', deco: '#3e9a5e' },
+    map: [
+      '####################',
+      '#g...L....L...xxx..#',
+      '#....L....L...xgx..#',
+      '#....L....L........#',
+      '#....L....L........#',
+      '#....L....L..###...#',
+      '#....L....L..#E....#',
+      '#....L....L..#.....#',
+      '#....L....L..###...#',
+      '#....#....#........#',
+      '#....Cc...Dd.....P.#',
+      '####################',
+    ],
+    links: {
+      C: { type: 'timed', srcs: ['c'], duration: 120 },
+      D: { type: 'timed', srcs: ['d'], duration: 120 },
+    },
+    guards: [],
+  },
+
+  // ------------------------------------------------------------------
+  // LEVEL 9 — "Silent Alarm"
+  // Two watchmen, one gem in a sealed display island, and a crate that is
+  // both key and cover. The island only opens at door A (plate a held);
+  // the gem's east side is walled with cases — it LEAVES by air only.
+  //
+  // SOLUTION (3 loops, exactly 2 ghosts — no slack):
+  //   Loop 1: slip south past guard 1's row-3 sweep while he walks away,
+  //           then push the crate (2,6) down col 2 onto plate a (2,9)
+  //           (3 shoves). Door A open for good. Press R (~7 s).
+  //   Loop 2: wait out guard 1, enter the island inlet (10,5)-(11,5) once
+  //           A opens (~7 s), grab the gem (12,5), face east, SPACE — it
+  //           clears both cases and lands at (15,5), right beside guard
+  //           2's beat. Press R (~9.5 s).
+  //   Loop 3: run the east route: row 1 east, then DOWN COL 18 (outside
+  //           his cone), snag the landed gem at (15,5) the moment guard 2
+  //           faces away (~10.5 s), then to E (17,9). He walks right past
+  //           the exit — ghosts he can't see, and you he mustn't. ~13 s.
+  // ------------------------------------------------------------------
+  {
+    name: 'Silent Alarm',
+    hint: 'The island loot leaves by AIR only. A crate is both key and cover — and the exit sits on his patrol route.',
+    maxGhosts: 2,
+    accent: { rug: '#242833', trim: '#4a5568', deco: '#aa3d4d' },
+    map: [
+      '####################',
+      '#P.................#',
+      '#..................#',
+      '#......#...........#',
+      '#......#.#xxxxx....#',
+      '#........A..gxx....#',
+      '#.k....#.#xxxxx....#',
+      '#......#...........#',
+      '#..................#',
+      '#.a..............E.#',
+      '#..................#',
+      '####################',
+    ],
+    links: {
+      A: { type: 'hold', srcs: ['a'] },
+    },
+    guards: [
+      // the inlet watcher, sweeping row 3 west of the pillar
+      { path: [ [1, 3], [6, 3] ], speed: 31 },
+      // the east-wing watcher — his beat runs right past the exit
+      { path: [ [16, 2], [16, 9] ], speed: 31 },
+    ],
+  },
+
+  // ------------------------------------------------------------------
+  // LEVEL 10 — "The Impossible Job"
+  // Everything at once: a two-switch vault, a crate for the plate, a
+  // three-gate laser weave, two guards, three gems, and a getaway van
+  // (three E tiles) behind a laser window you can THROW through. Five
+  // loops of yourself, conducted.
+  //
+  // SOLUTION (5 loops):
+  //   Loop 1: cross guard 1's row-7 lane early (he starts far east at
+  //           (12,7)), flip switch s (3,4) ~1.5 s, then shove the crate
+  //           (7,6) three tiles south onto plate b (7,9) — door B open for
+  //           good, and s is ON every loop. R ~7 s.
+  //   Loop 2 (the catcher): quick job — around to (1,6) via (3,7)/(2,6),
+  //           and press R standing on the MIDDLE getaway tile (1,8). This
+  //           empty-handed ghost is your receiver.
+  //   Loop 3: north wing: cross the lane, up col 4, east along row 2 past
+  //           guard 2's short beat (slip by when he turns), dash the three
+  //           blinking gates (cols 11/13/15 are staggered), flip switch t
+  //           (17,2) at ~5.5 s. R. Vault V now opens at ~5.5 s each loop.
+  //   Loop 4 (the courier): same weave run, but grab gem 3 (18,1), come
+  //           back through the gates, down to the van, park on (1,7) at
+  //           ~10 s holding it. R.
+  //   Loop 5 (the maestro): wait out guard 2 at (7,5), through door B
+  //           (~5.5 s), grab gem 2 (11,5), back west to (4,8), face west,
+  //           SPACE — the gem sails through the laser window onto your
+  //           catcher at (1,8). CAUGHT. Then the safe row-10 highway east,
+  //           V (13,9), gem 1 (17,9) ~10 s, highway back west, wait for
+  //           guard 1 to turn east (~12.5 s), slip in via (3,7)-(1,6) and
+  //           stand on (1,9). Three heisters, three gems, one van. ~14 s.
+  // ------------------------------------------------------------------
+  {
+    name: 'The Impossible Job',
+    hint: 'Conduct the orchestra: a catcher in the van, a courier through the weave, a crate on the plate — and you, everywhere at once.',
+    maxGhosts: 5,
+    accent: { rug: '#2e2410', trim: '#8a6a24', deco: '#c9a13d' },
+    map: [
+      '####################',
+      '#..........l.l.l..g#',
+      '#..........l.l.l.t.#',
+      '#..........l.l.l...#',
+      '#..s......xxx#######',
+      '#.........Bgx......#',
+      '#......k..xxx......#',
+      '#EL................#',
+      '#EL..........#######',
+      '#EL....b.....V...g.#',
+      '#.L.P........#######',
+      '####################',
+    ],
+    links: {
+      B: { type: 'hold', srcs: ['b'] },
+      V: { type: 'switch', srcs: ['s', 't'], mode: 'all' },
+    },
+    lasers: { period: 200, on: 120, stagger: 66 },
+    guards: [
+      // the hall sweeper: starts far east so early crossings are safe
+      { path: [ [12, 7], [4, 7] ], speed: 31 },
+      // short nervous beat guarding the weave approach
+      { path: [ [9, 2], [9, 4] ], speed: 31 },
+    ],
   },
 ];

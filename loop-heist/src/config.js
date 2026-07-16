@@ -36,10 +36,19 @@ export const C = {
   PLATE_R: 8, // press radius around plate centre
 
   // --- input mask bits ---
+  // The recorded input stream is the ONLY thing ghosts replay, so every
+  // action must live in the mask. THROW is edge-detected inside the sim.
   UP: 1,
   DOWN: 2,
   LEFT: 4,
   RIGHT: 8,
+  THROW: 16,
+  MOVE_MASK: 15,
+
+  // --- gem throwing ---
+  THROW_TILES: 3, // nominal range: lands on the 3rd tile if it is floor
+  THROW_SCAN: 6, // keeps sailing over cases/crates up to this many tiles
+  THROW_ARC: 13, // arc height in px (render only)
 };
 
 // Moody museum palette. Dark navy floors, warm loot, red lasers, cyan ghosts.

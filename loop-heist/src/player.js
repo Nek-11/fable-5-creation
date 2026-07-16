@@ -15,7 +15,19 @@ export function makeActor(x, y) {
     moving: false,
     carried: [], // gem objects currently floating over this actor's head
     onSwitch: -1, // switch index the actor is currently standing on (-1 none)
+    throwHeld: false, // edge detector for the THROW bit
   };
+}
+
+// One full actor tick: move, pick up loot, maybe throw. The player and
+// every ghost replay run through THIS function with a recorded mask, so
+// throws re-happen at the exact same tick in every loop.
+export function actActor(world, a, mask, isPlayer) {
+  stepActor(world, a, mask);
+  world.tryPickup(a, isPlayer);
+  const wantThrow = (mask & C.THROW) !== 0;
+  if (wantThrow && !a.throwHeld && a.carried.length > 0) world.throwGem(a, isPlayer);
+  a.throwHeld = wantThrow;
 }
 
 const DIAG = 0.7071067811865476;
@@ -61,6 +73,13 @@ function collideAxis(world, a, mx, my) {
   for (let ty = minTy; ty <= maxTy; ty++) {
     for (let tx = minTx; tx <= maxTx; tx++) {
       if (!world.isSolid(tx, ty)) continue;
+      // sokoban push: walking into a crate shoves it one tile along the
+      // movement axis (if the tile behind it is free), then keeps walking
+      if (world.crateAt(tx, ty)) {
+        const pdx = mx !== 0 ? (mx > 0 ? 1 : -1) : 0;
+        const pdy = my !== 0 ? (my > 0 ? 1 : -1) : 0;
+        if ((pdx || pdy) && world.tryPushCrate(tx, ty, pdx, pdy)) continue;
+      }
       const left = tx * t;
       const top = ty * t;
       // closest point on the tile to the circle centre

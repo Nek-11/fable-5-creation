@@ -9,7 +9,7 @@
 import { C } from './config.js';
 import { LEVELS } from './levels.js';
 import { World } from './entities.js';
-import { makeActor, stepActor, actorFrame } from './player.js';
+import { makeActor, actActor, actorFrame } from './player.js';
 import { Ghost } from './ghosts.js';
 import { FX } from './fx.js';
 
@@ -52,8 +52,8 @@ export class Game {
     this.fast = false; // fast-forward held (changes ticks-per-frame only)
     this.idleT = 0; // how long the player has stood still (visual only)
 
-    // attract-mode backdrop for title/select
-    this.backdrop = new World(LEVELS[4]);
+    // attract-mode backdrop for title/select: the finale map
+    this.backdrop = new World(LEVELS[LEVELS.length - 1]);
     this.backdropBg = this.backdrop.buildBackground(ts);
 
     this.ui.onPick = (i) => this.startLevel(i);
@@ -158,11 +158,15 @@ export class Game {
         }
         break;
       case 'select':
-        if (action === 'left' || action === 'up') {
+        // two-column grid: up/down walks a column, left/right hops columns
+        if (action === 'up') {
           this.ui.setSelIndex(this.ui.selIndex - 1);
           a.uiMove();
-        } else if (action === 'right' || action === 'down') {
+        } else if (action === 'down') {
           this.ui.setSelIndex(this.ui.selIndex + 1);
+          a.uiMove();
+        } else if (action === 'left' || action === 'right') {
+          this.ui.hopColumn(action === 'right' ? 1 : -1);
           a.uiMove();
         } else if (action === 'confirm') {
           a.uiSelect();
@@ -276,9 +280,9 @@ export class Game {
     // ---- state 'play' ----
     const mask = this.input.mask();
 
-    // time is frozen until your first step of each loop
+    // time is frozen until your first STEP of each loop (movement bits only)
     if (this.armed) {
-      if (mask === 0) return;
+      if ((mask & C.MOVE_MASK) === 0) return;
       this.armed = false;
     }
 
@@ -287,8 +291,7 @@ export class Game {
 
     // ghosts first (oldest first), then the player — fixed order = fixed sim
     for (const g of this.ghosts) g.step(this.world);
-    stepActor(this.world, this.player, mask);
-    this.world.tryPickup(this.player, true);
+    actActor(this.world, this.player, mask, true);
 
     const bodies = [];
     for (const g of this.ghosts) bodies.push(g.a);
@@ -356,6 +359,18 @@ export class Game {
           this.audio.ghostGem();
           this.fx.ghostGemBurst(e.x, e.y);
           break;
+        case 'throw':
+          this.audio.throw(e.isPlayer);
+          this.fx.throwPuff(e.x, e.y);
+          break;
+        case 'gemLand':
+          this.audio.gemLand();
+          this.fx.gemLand(e.x, e.y);
+          break;
+        case 'cratePush':
+          this.audio.cratePush();
+          this.fx.crateDust(e.x, e.y);
+          break;
         case 'plateOn':
           this.audio.plateOn();
           this.fx.plateClick(e.x, e.y);
@@ -406,9 +421,20 @@ export class Game {
     g.drawImage(this.bg, 0, 0);
     this.world.drawFloorLayer(g, this.ts, visTick);
 
-    // loose gems (waiting on their pedestals)
+    // loose gems (on pedestals, or sailing through the air)
     for (const gem of this.world.gems) {
       if (gem.carrier) continue;
+      if (gem.fly) {
+        const f = gem.fly;
+        const p = f.t / f.dur;
+        const x = f.x0 + (f.x1 - f.x0) * p;
+        const yg = f.y0 + (f.y1 - f.y0) * p;
+        const arc = Math.sin(Math.PI * p) * C.THROW_ARC;
+        g.fillStyle = 'rgba(0,0,0,0.32)'; // travelling shadow
+        g.fillRect(Math.round(x - 3), Math.round(yg + 6), 6, 2);
+        g.drawImage(this.ts.gems[gem.kind % 3], Math.round(x - 8), Math.round(yg - 10 - arc));
+        continue;
+      }
       const bob = Math.sin(this.animT * 2.3 + gem.kind * 1.7) * 1.5;
       const gx = Math.round(gem.x - 8);
       const gy = Math.round(gem.y - 10 + bob);
@@ -418,6 +444,7 @@ export class Game {
 
     this.world.drawVisionCones(g, this.state === 'dead');
     this.world.drawDoors(g);
+    this.world.drawCrates(g, this.ts);
 
     // guards
     for (const gd of this.world.guards) {
@@ -482,6 +509,7 @@ export class Game {
       low: remaining <= 180 && this.state === 'play',
       armed: this.armed && this.state === 'play',
       fast: this.fast && this.state === 'play',
+      carrying: this.player.carried.length > 0 && this.state === 'play',
     });
   }
 
@@ -546,6 +574,7 @@ export class Game {
     g.drawImage(this.backdropBg, 0, 0);
     this.backdrop.drawFloorLayer(g, this.ts, visTick);
     this.backdrop.drawDoors(g);
+    this.backdrop.drawCrates(g, this.ts);
     this.backdrop.drawLasers(g, visTick);
     for (const gem of this.backdrop.gems) {
       const bob = Math.sin(this.animT * 2.3 + gem.kind * 1.7) * 1.5;

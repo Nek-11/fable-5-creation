@@ -253,6 +253,18 @@ export class AudioEngine {
   ghostGem() {
     this.blip(520, 0.1, 'sine', 0.05, 700);
   }
+  throw(isPlayer) {
+    this.noiseBurst(0.14, 2400, isPlayer ? 0.12 : 0.06, 'bandpass');
+    this.blip(440, 0.16, 'sine', isPlayer ? 0.1 : 0.05, 880);
+  }
+  gemLand() {
+    this.blip(1320, 0.05, 'square', 0.1);
+    this.blip(1760, 0.09, 'triangle', 0.08, null, 0.04);
+  }
+  cratePush() {
+    this.noiseBurst(0.16, 320, 0.2, 'lowpass');
+    this.blip(85, 0.12, 'sine', 0.16, 60);
+  }
   denied() {
     this.blip(220, 0.09, 'square', 0.12, 180);
     this.blip(160, 0.12, 'square', 0.12, 140, null, 0.09);

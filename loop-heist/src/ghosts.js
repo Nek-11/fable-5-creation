@@ -8,7 +8,7 @@
 // of every loop — still pressing plates, still CARRYING its loot. Parking
 // a loot-carrying ghost inside the exit zone is the core heist technique:
 // the job completes when every gem is in the getaway zone at once.
-import { makeActor, stepActor } from './player.js';
+import { makeActor, actActor } from './player.js';
 
 export class Ghost {
   // rec: array of input masks (one per tick). id: spawn order, for tinting.
@@ -30,20 +30,23 @@ export class Ghost {
     a.moving = false;
     a.carried.length = 0;
     a.onSwitch = -1;
+    a.throwHeld = false;
     this.idx = 0;
     this.done = false;
   }
 
-  // one fixed tick
+  // one fixed tick. A finished ghost stays put but KEEPS its hands out:
+  // it still presses plates and still picks up gems that land within
+  // reach — throw a gem at a parked ghost and it catches it.
   step(world) {
     if (this.done) {
       this.a.moving = false;
+      world.tryPickup(this.a, false);
       return;
     }
     if (this.idx < this.rec.length) {
-      stepActor(world, this.a, this.rec[this.idx]);
+      actActor(world, this.a, this.rec[this.idx], false);
       this.idx++;
-      world.tryPickup(this.a, false);
     }
     if (this.idx >= this.rec.length) {
       this.done = true;

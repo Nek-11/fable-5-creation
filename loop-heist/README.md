@@ -15,21 +15,32 @@ Lasers only zap the real you.
 ## How to play
 
 - **WASD / arrows** — move. The loop clock starts on your first step.
+- **SPACE** — throw the gem you're carrying ~3 tiles in the facing
+  direction. Loot sails **over lasers, display cases and crates** (walls
+  stop it), and any heister standing where it lands catches it — including
+  a parked ghost. Throws are part of the recording, so ghosts re-throw at
+  the same instant every loop: bucket brigades are a thing.
 - **R** — rewind now. Your run becomes a ghost; end a recording on a plate
   to keep it held, or on the exit to park your loot there.
 - **F / Shift (hold)** — fast-forward 3×. Ghosts, guards, doors and the
   clock all accelerate together; waiting is never the puzzle.
 - **ESC** — pause (restart heist / back to hideout). **M** — sound.
 
+**Crates** shove one tile per push, sokoban-style. Parked on a pressure
+plate they hold it down for the whole loop, and they block laser beams and
+the guards' line of sight. Like everything else, they snap home when time
+rewinds — and your ghosts re-shove them on schedule.
+
 Each job caps how many ghosts can coexist — one more rewind past the cap
 and the **oldest ghost fades**. The HUD shows a pip per gem: dim = still
 on its pedestal, amber = carried but not delivered, lit = in the getaway
 zone. Fewer loops = better heist stats (saved locally, per level).
 
-Five jobs: *First Job*, *Two Hands*, *Timing Lock*, *Night Watch* and
-*The Vault* — plates, timed doors, a patrolling guard with a vision cone,
-blinking laser corridors, a two-switch vault, and one gem that only a
-parked ghost can deliver in time.
+Ten jobs, escalating from *First Job* to *The Impossible Job*: plates,
+timed doors, patrolling guards with vision cones, blinking laser weaves,
+two-switch vaults, sealed display islands whose loot leaves by air only,
+crate keys, ghost bucket-brigades, and a finale where you conduct four
+past selves and a catcher in the getaway van.
 
 ## Tech
 

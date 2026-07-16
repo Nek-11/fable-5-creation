@@ -123,6 +123,34 @@ function drawSwitch(g, on, variant) {
   g.fillRect(7, 9, 2, 2);
 }
 
+function drawCrate(g) {
+  // sturdy museum shipping crate, top-down with a lit top face
+  g.fillStyle = '#2e2416';
+  g.fillRect(0, 1, T, 15); // outline/shadow mass
+  g.fillStyle = '#54432c';
+  g.fillRect(1, 2, 14, 13);
+  g.fillStyle = '#6d5838';
+  g.fillRect(1, 2, 14, 5); // lit top plank band
+  // plank seams
+  g.fillStyle = '#3a2f1d';
+  g.fillRect(1, 7, 14, 1);
+  g.fillRect(1, 11, 14, 1);
+  g.fillRect(5, 2, 1, 13);
+  g.fillRect(10, 2, 1, 13);
+  // cross brace
+  g.fillStyle = '#7d6742';
+  for (let i = 0; i < 5; i++) g.fillRect(3 + i * 2, 4 + i * 2, 2, 2);
+  // corner nails
+  g.fillStyle = '#c9b98c';
+  g.fillRect(2, 3, 1, 1);
+  g.fillRect(13, 3, 1, 1);
+  g.fillRect(2, 13, 1, 1);
+  g.fillRect(13, 13, 1, 1);
+  // "FRAGILE" chalk mark
+  g.fillStyle = 'rgba(255,240,200,0.5)';
+  g.fillRect(7, 9, 4, 1);
+}
+
 function drawExit(g) {
   // dark doorway with green EXIT sign (tiny 3x5 letters)
   g.fillStyle = '#050a12';
@@ -424,6 +452,7 @@ export function buildTileset() {
   tiles.switchOn0 = single(drawSwitch, true, 0);
   tiles.switchOn1 = single(drawSwitch, true, 1);
   tiles.exit = single(drawExit);
+  tiles.crate = single(drawCrate);
 
   // burglar sheet: 4 dirs (rows) x 3 frames (cols)
   const [playerSheet, pg] = mk(T * 3, T * 4);

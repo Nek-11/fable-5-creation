@@ -71,6 +71,17 @@ export class FX {
   ghostSpawnPuff(x, y) {
     this.spawn(12, x, y, { color: [PAL.ghost, '#bdf6ff', '#5ce8ff'], speed: 28, life: 0.6, size: 1 });
   }
+  throwPuff(x, y) {
+    this.spawn(5, x, y - 10, { color: ['#ffffff', PAL.goldHi], speed: 22, life: 0.25 });
+  }
+  gemLand(x, y) {
+    this.spawn(10, x, y, { color: [PAL.gold, PAL.goldHi, '#ffffff'], speed: 40, life: 0.4, up: 18, grav: 80 });
+    this.shake = Math.max(this.shake, 0.18);
+  }
+  crateDust(x, y) {
+    this.spawn(8, x, y + 4, { color: ['#8a734b', '#54432c', '#3a2f1d'], speed: 26, life: 0.4, grav: 50 });
+    this.shake = Math.max(this.shake, 0.15);
+  }
   winBurst(x, y) {
     this.spawn(40, x, y, { color: [PAL.gold, PAL.exit, PAL.ghost, '#ffffff', PAL.magentaGem], speed: 80, life: 1.1, up: 40, grav: 70, size: 2 });
     this.whiteFlash = 0.5;

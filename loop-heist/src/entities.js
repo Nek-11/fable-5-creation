@@ -21,6 +21,7 @@ export class World {
     this.gems = [];
     this.plates = [];
     this.switches = [];
+    this.crates = [];
     this.doors = []; // groups
     this.lasers = []; // groups
     this.doorAt = new Map(); // tileIndex -> door group
@@ -50,10 +51,12 @@ export class World {
               y: cy,
               carrier: null,
             });
-          else if (ch >= 'a' && ch <= 'c')
+          else if (ch >= 'a' && ch <= 'e')
             this.plates.push({ ch, tx, ty, x: cx, y: cy, pressed: false, timer: 0 });
           else if (ch === 's' || ch === 't')
             this.switches.push({ ch, tx, ty, x: cx, y: cy, on: false });
+          else if (ch === 'k')
+            this.crates.push({ tx, ty, homeTx: tx, homeTy: ty, rx: cx - T / 2, ry: cy - T / 2 });
           else if (ch === 'l' || ch === 'L') laserTiles.push({ tx, ty, blink: ch === 'l' });
           else if (ch >= 'A' && ch <= 'Z') {
             if (!doorTiles.has(ch)) doorTiles.set(ch, []);
@@ -85,8 +88,12 @@ export class World {
     }
 
     // --- laser groups (staggered blink phases per group) ---
+    // blinking and always-on tiles group separately, even when adjacent
     const lcfg = def.lasers ?? { period: 0, on: 0, stagger: 0 };
-    const lgroups = this.groupContiguous(laserTiles);
+    const lgroups = [
+      ...this.groupContiguous(laserTiles.filter((t) => t.blink)),
+      ...this.groupContiguous(laserTiles.filter((t) => !t.blink)),
+    ];
     lgroups.forEach((g, gi) => {
       const first = g[0];
       const vertical =
@@ -159,6 +166,13 @@ export class World {
       g.x = g.hx;
       g.y = g.hy;
       g.carrier = null;
+      g.fly = null;
+    }
+    for (const c of this.crates) {
+      c.tx = c.homeTx;
+      c.ty = c.homeTy;
+      c.rx = c.tx * T; // render position snaps home
+      c.ry = c.ty * T;
     }
     for (const p of this.plates) {
       p.pressed = false;
@@ -192,23 +206,48 @@ export class World {
 
   isSolid(tx, ty) {
     if (this.rawSolid(tx, ty)) return true;
+    if (this.crateAt(tx, ty)) return true;
     const d = this.doorAt.get(ty * this.cols + tx);
     return d ? d.progress < C.DOOR_SOLID_BELOW : false;
   }
 
-  // guards can see through glass cases, but not walls or closed doors
+  // guards can see through glass cases, but not walls, closed doors or crates
   blocksVision(tx, ty) {
     if (tx < 0 || ty < 0 || tx >= this.cols || ty >= this.rows) return true;
     if (this.grid[ty * this.cols + tx] === 1) return true;
+    if (this.crateAt(tx, ty)) return true;
     const d = this.doorAt.get(ty * this.cols + tx);
     return d ? d.progress < C.DOOR_SOLID_BELOW : false;
+  }
+
+  // ------------------------------------------------------ crates
+
+  crateAt(tx, ty) {
+    for (const c of this.crates) if (c.tx === tx && c.ty === ty) return c;
+    return null;
+  }
+
+  // one tile per shove; can't push into walls, closed doors or other crates
+  tryPushCrate(tx, ty, dx, dy) {
+    const c = this.crateAt(tx, ty);
+    if (!c) return false;
+    const nx = tx + dx;
+    const ny = ty + dy;
+    if (this.rawSolid(nx, ny)) return false;
+    if (this.crateAt(nx, ny)) return false;
+    const d = this.doorAt.get(ny * this.cols + nx);
+    if (d && d.progress < C.DOOR_SOLID_BELOW) return false;
+    c.tx = nx;
+    c.ty = ny;
+    this.events.push({ type: 'cratePush', x: nx * T + T / 2, y: ny * T + T / 2 });
+    return true;
   }
 
   // ------------------------------------------------------ loot
 
   tryPickup(actor, isPlayer) {
     for (const g of this.gems) {
-      if (g.carrier) continue;
+      if (g.carrier || g.fly) continue;
       const dx = actor.x - g.x;
       const dy = actor.y - g.y;
       if (dx * dx + dy * dy < C.PICKUP_R * C.PICKUP_R) {
@@ -219,14 +258,84 @@ export class World {
     }
   }
 
+  // ------------------------------------------------------ throwing
+  // SPACE lobs the top gem ~3 tiles in the facing direction. It sails OVER
+  // lasers, display cases and crates; walls and closed doors stop it (it
+  // bounces down onto the last open floor tile before the blocker). If the
+  // 3rd tile isn't open floor it keeps sailing (up to THROW_SCAN tiles) to
+  // the first floor tile past the obstacles.
+  throwGem(actor, isPlayer) {
+    const DIRV = [
+      [0, 1], // 0 down
+      [0, -1], // 1 up
+      [-1, 0], // 2 left
+      [1, 0], // 3 right
+    ][actor.dir];
+    const stx = Math.floor(actor.x / T);
+    const sty = Math.floor(actor.y / T);
+    let land = null;
+    let bounce = null;
+    let dist = 0;
+    for (let d = 1; d <= C.THROW_SCAN; d++) {
+      const tx = stx + DIRV[0] * d;
+      const ty = sty + DIRV[1] * d;
+      if (tx < 0 || ty < 0 || tx >= this.cols || ty >= this.rows) break;
+      if (this.grid[ty * this.cols + tx] === 1) break; // wall stops flight
+      const door = this.doorAt.get(ty * this.cols + tx);
+      if (door && door.progress < C.DOOR_SOLID_BELOW) break; // closed door too
+      const landable = this.grid[ty * this.cols + tx] === 0 && !this.crateAt(tx, ty);
+      if (landable) {
+        if (d >= C.THROW_TILES) {
+          land = [tx, ty];
+          dist = d;
+          break;
+        }
+        bounce = [tx, ty];
+        dist = d;
+      }
+    }
+    const target = land ?? bounce;
+    const gem = actor.carried.pop();
+    gem.carrier = null;
+    if (!target) {
+      // nowhere to go: plops at the thrower's feet
+      gem.x = actor.x;
+      gem.y = actor.y;
+      this.events.push({ type: 'gemLand', x: gem.x, y: gem.y });
+      return;
+    }
+    gem.fly = {
+      x0: actor.x,
+      y0: actor.y - 12,
+      x1: target[0] * T + T / 2,
+      y1: target[1] * T + T / 2,
+      t: 0,
+      dur: 12 + Math.max(1, dist) * 5,
+    };
+    this.events.push({ type: 'throw', x: actor.x, y: actor.y, isPlayer });
+  }
+
   // ------------------------------------------------------ per-tick update
   // actors: every plate-pressing body, ghosts first then the player.
 
   update(tick, actors) {
-    // plates
+    // gems in flight
+    for (const g of this.gems) {
+      if (!g.fly) continue;
+      g.fly.t++;
+      if (g.fly.t >= g.fly.dur) {
+        g.x = g.fly.x1;
+        g.y = g.fly.y1;
+        g.fly = null;
+        this.events.push({ type: 'gemLand', x: g.x, y: g.y });
+      }
+    }
+
+    // plates (crates hold them down permanently)
     for (const p of this.plates) {
-      let held = false;
+      let held = this.crateAt(p.tx, p.ty) !== null;
       for (const a of actors) {
+        if (held) break;
         const dx = a.x - p.x;
         const dy = a.y - p.y;
         if (dx * dx + dy * dy < C.PLATE_R * C.PLATE_R) {
@@ -410,6 +519,15 @@ export class World {
     return (tick + l.phase) % l.period < l.on;
   }
 
+  // a crate anywhere along the beam stops it there: tiles at and beyond the
+  // first crated tile (counting from the top/left emitter) go dark
+  laserBlockedFrom(l) {
+    for (let i = 0; i < l.tiles.length; i++) {
+      if (this.crateAt(l.tiles[i].tx, l.tiles[i].ty)) return i;
+    }
+    return Infinity;
+  }
+
   // 0..1 how close an inactive blinking laser is to firing (for the warn glow)
   laserWarmth(l, tick) {
     if (!l.blink) return 0;
@@ -421,7 +539,10 @@ export class World {
   playerHitsLaser(p, tick) {
     for (const l of this.lasers) {
       if (!this.laserActive(l, tick)) continue;
-      for (const tl of l.tiles) {
+      const blockedFrom = this.laserBlockedFrom(l);
+      for (let ti = 0; ti < l.tiles.length; ti++) {
+        if (ti >= blockedFrom) break;
+        const tl = l.tiles[ti];
         // thin beam through the middle of the tile
         let x0, y0, x1, y1;
         if (l.vertical) {
@@ -470,6 +591,7 @@ export class World {
     for (const gm of this.gems) add(Math.floor(gm.hx / T), Math.floor(gm.hy / T));
     for (const d of this.doors) for (const tl of d.tiles) add(tl.tx, tl.ty);
     for (const l of this.lasers) for (const tl of l.tiles) add(tl.tx, tl.ty);
+    for (const c of this.crates) add(c.homeTx, c.homeTy);
     return occ;
   }
 
@@ -633,6 +755,19 @@ export class World {
     }
   }
 
+  // crates: sim position is the tile; rx/ry ease toward it (render only)
+  drawCrates(g, ts) {
+    for (const c of this.crates) {
+      const txp = c.tx * T;
+      const typ = c.ty * T;
+      c.rx += (txp - c.rx) * 0.38;
+      c.ry += (typ - c.ry) * 0.38;
+      if (Math.abs(txp - c.rx) < 0.6) c.rx = txp;
+      if (Math.abs(typ - c.ry) < 0.6) c.ry = typ;
+      g.drawImage(ts.tiles.crate, Math.round(c.rx), Math.round(c.ry));
+    }
+  }
+
   drawDoors(g) {
     for (const d of this.doors) {
       for (const tl of d.tiles) {
@@ -676,9 +811,12 @@ export class World {
 
   drawLasers(g, tick) {
     for (const l of this.lasers) {
-      const active = this.laserActive(l, tick);
+      const activeGroup = this.laserActive(l, tick);
       const warmth = this.laserWarmth(l, tick);
-      for (const tl of l.tiles) {
+      const blockedFrom = this.laserBlockedFrom(l);
+      for (let ti = 0; ti < l.tiles.length; ti++) {
+        const tl = l.tiles[ti];
+        const active = activeGroup && ti < blockedFrom;
         const x = tl.tx * T;
         const y = tl.ty * T;
         if (active) {
@@ -692,7 +830,7 @@ export class World {
           g.fillStyle = PAL.laserCore;
           if (l.vertical) g.fillRect(x + 7, y, 1, T);
           else g.fillRect(x, y + 7, T, 1);
-        } else if (warmth > 0) {
+        } else if (warmth > 0 && ti < blockedFrom) {
           g.fillStyle = `rgba(255,51,85,${(0.22 * warmth).toFixed(3)})`;
           if (l.vertical) g.fillRect(x + 7, y, 2, T);
           else g.fillRect(x, y + 7, T, 2);

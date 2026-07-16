@@ -40,6 +40,7 @@ const input = {
   mask() {
     let m = 0;
     for (const [code, bit] of MOVE_KEYS) if (held.has(code)) m |= bit;
+    if (held.has('Space')) m |= C.THROW; // throws are part of the recording
     return m;
   },
   // fast-forward is NOT part of the recorded input — it only changes how
@@ -87,8 +88,13 @@ window.addEventListener('keydown', (e) => {
       game.handleAction('back');
       break;
     case 'Enter':
-    case 'Space':
       game.handleAction('confirm');
+      e.preventDefault();
+      break;
+    case 'Space':
+      // in a run, SPACE = throw (recorded in the mask); elsewhere = confirm
+      held.add('Space');
+      if (game.state !== 'play') game.handleAction('confirm');
       e.preventDefault();
       break;
     case 'KeyQ':
