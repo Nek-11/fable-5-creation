@@ -74,10 +74,14 @@ export class Game {
     this.scale = Math.max(0.7, Math.min(1.35, Math.min(w / 1280, h / 720)));
     this.groundY = h * C.GROUND_FRAC;
     this.bg.resize(w, h);
+    const floating = new Set(['flyer', 'orb', 'bosstag', 'larrow']);
     for (const e of this.enemies) {
       e.su = this.scale * e.body.scale;
-      if (e.type !== 'flyer' && e.type !== 'orb') {
+      if (!floating.has(e.type)) {
         e.y = this.groundY;
+      } else if (e.type === 'bosstag') {
+        e.x = Math.max(w * 0.3, Math.min(w * 0.9, e.x));
+        e.baseY = Math.max(h * 0.16, Math.min(h * 0.6, e.baseY));
       } else {
         e.y = Math.min(e.y, this.groundY - 30);
         e.baseY = Math.min(e.baseY, this.groundY - 30);
@@ -228,7 +232,15 @@ export class Game {
     const banned = this.bannedFirstLetters();
     let words;
     if (type === 'boss') {
-      words = BOSS_SENTENCES[(Math.random() * BOSS_SENTENCES.length) | 0].slice();
+      // medium+ bosses rant for two sentences — twice the HP, twice the storm
+      words = [];
+      const picked = new Set();
+      for (let i = 0; i < (D.boss.sentences || 1); i++) {
+        let idx = (Math.random() * BOSS_SENTENCES.length) | 0;
+        while (picked.has(idx)) idx = (idx + 1) % BOSS_SENTENCES.length;
+        picked.add(idx);
+        words = words.concat(BOSS_SENTENCES[idx]);
+      }
     } else if (D.cipher && type === 'walker' && Math.random() < 0.12) {
       // occasional full sentence, punctuation and all
       words = [cipherSentence(banned)];
@@ -317,7 +329,7 @@ export class Game {
           this.setDifficulty((idx + 1) % C.DIFF_ORDER.length);
           return true;
         }
-        if (k >= '1' && k <= '4') {
+        if (k >= '1' && k <= '5') {
           this.setDifficulty(Number(k) - 1);
           return true;
         }
@@ -374,10 +386,11 @@ export class Game {
   }
 
   // nearest live enemy whose word starts with this letter
+  // (letter-arrows are handled by the interceptor path, never lock-typed)
   acquire(ch) {
     let best = null;
     for (const e of this.enemies) {
-      if (e.dead || e.doomed || !e.word) continue;
+      if (e.dead || e.doomed || !e.word || e.type === 'larrow') continue;
       if (e.x > this.w + 10) continue;
       if (e.word[0] !== ch) continue;
       if (!best || e.x < best.x) best = e;
@@ -387,6 +400,16 @@ export class Game {
 
   typeLetter(ch) {
     this.stats.keys++;
+
+    // PRIORITY: incoming boss letter-arrows. If the key matches one, it is
+    // an interception — never a fumble, never touches the current word.
+    let dart = null;
+    for (const e of this.enemies) {
+      if (e.dead || e.type !== 'larrow') continue;
+      if (e.words[0] === ch && (!dart || e.x < dart.x)) dart = e;
+    }
+    if (dart) return this.interceptDart(dart);
+
     const t = this.target;
     if (t && !t.dead && t.word) {
       if (t.word[t.progress] === ch) return this.correctLetter(t);
@@ -449,7 +472,75 @@ export class Game {
     return C.WEAPONS[Math.max(1, Math.min(C.MAX_MULT, this.mult))].id;
   }
 
+  // snap-shot an incoming boss letter-arrow out of the air
+  interceptDart(dart) {
+    this.stats.correctChars++;
+    this.audio.intercept();
+    this.player.release();
+    const tip = this.player.bowHand;
+    this.addEffect({ type: 'tracer', x0: tip.x, y0: tip.y, x1: dart.x, y1: dart.y, t: 0.14, maxT: 0.14 });
+    this.particles.burst(dart.x, dart.y, { color: C.COLORS.larrow, count: 11, speed: 230, size: 4 });
+    const pts = Math.round(C.ENEMIES.larrow.score * this.mult * this.diff.scoreMult);
+    this.score += pts;
+    this.ui.setScore(this.score);
+    this.particles.floatText(dart.x, dart.y - 20, `+${pts}`, { color: '#7ee8fa', size: 12, life: 0.6 });
+    dart.dead = true;
+    const idx = this.enemies.indexOf(dart);
+    if (idx >= 0) this.enemies.splice(idx, 1);
+  }
+
+  // shared post-word bookkeeping: quickdraw window + combo/weapon evolution
+  bumpCombo() {
+    this.lastWordTime = this.time;
+    this.streak++;
+    const newMult = Math.min(C.MAX_MULT, 1 + Math.floor(this.streak / C.COMBO_STEP));
+    if (newMult > this.mult) {
+      this.mult = newMult;
+      this.setTier(newMult, true);
+    }
+    this.ui.setCombo(this.mult, this.mult >= C.MAX_MULT ? 1 : (this.streak % C.COMBO_STEP) / C.COMBO_STEP);
+  }
+
+  // a floating boss word is done: the weapon lashes the DEMON, wherever the
+  // word happened to hang; the tag itself dissolves
+  completeBossTag(tag) {
+    const boss = tag.boss;
+    tag.lastWord = tag.word;
+    tag.words.shift();
+    this.stats.words++;
+    if (boss && !boss.dead) boss.lastWord = tag.lastWord;
+
+    this.player.release();
+    const kind = this.weaponKind;
+    this.audio.fire(kind);
+    const tip = this.player.bowHand;
+    if (boss && !boss.dead) {
+      this.projectiles.fireArrow(tip.x, tip.y, boss, { flame: this.up.flame > 0, kind });
+    }
+
+    // the rune tag shatters where it floated
+    this.particles.letterShatter(tag.x, tag.y, tag.lastWord, C.COLORS.bosstag);
+    this.particles.burst(tag.x, tag.y + 20 * this.scale, { color: C.COLORS.bosstag, count: 8, speed: 150, gravity: -30 });
+    tag.dead = true;
+    if (this.target === tag) {
+      this.target = null;
+      this.player.setDraw(0);
+    }
+    const idx = this.enemies.indexOf(tag);
+    if (idx >= 0) this.enemies.splice(idx, 1);
+
+    // quickdraw still rewards fast chains during the boss fight
+    if (this.up.quickdraw > 0 && this.time - this.lastWordTime < C.QUICKDRAW_WINDOW) {
+      const other = this.nearestEnemyTo(this.player.x, this.groundY, null);
+      if (other) {
+        this.projectiles.fireArrow(tip.x, tip.y - 7, other, { flame: this.up.flame > 0, kind, bonus: true });
+      }
+    }
+    this.bumpCombo();
+  }
+
   completeWord(t) {
+    if (t.type === 'bosstag') return this.completeBossTag(t);
     t.lastWord = t.word;
     t.words.shift();
     t.progress = 0;
@@ -483,16 +574,7 @@ export class Game {
         this.particles.floatText(tip.x + 30, tip.y - 34, 'volley!', { color: '#7ee8fa', size: 13, life: 0.7 });
       }
     }
-    this.lastWordTime = this.time;
-
-    // combo → weapon evolution
-    this.streak++;
-    const newMult = Math.min(C.MAX_MULT, 1 + Math.floor(this.streak / C.COMBO_STEP));
-    if (newMult > this.mult) {
-      this.mult = newMult;
-      this.setTier(newMult, true);
-    }
-    this.ui.setCombo(this.mult, this.mult >= C.MAX_MULT ? 1 : (this.streak % C.COMBO_STEP) / C.COMBO_STEP);
+    this.bumpCombo();
 
     if (t.words.length === 0) {
       // the killing arrow is in flight — stop targeting this one
@@ -580,7 +662,7 @@ export class Game {
     let best = null;
     let bestD = Infinity;
     for (const e of this.enemies) {
-      if (e === exclude || e.dead || e.doomed) continue;
+      if (e === exclude || e.dead || e.doomed || e.ethereal) continue;
       if (e.x > this.w + 10) continue;
       const d = (e.x - x) * (e.x - x) + (e.hitY() - y) * (e.hitY() - y);
       if (d < bestD) {
@@ -614,7 +696,7 @@ export class Game {
       const r = (arrow.kind === 'dragon' ? 95 : 70) * this.scale;
       let chipped = 0;
       for (const e of [...this.enemies]) {
-        if (e.dead || e.doomed || e === t || e.type === 'boss') continue;
+        if (e.dead || e.doomed || e.ethereal || e === t || e.type === 'boss') continue;
         const dx = e.x - t.x;
         const dy = e.hitY() - t.hitY();
         if (dx * dx + dy * dy > r * r) continue;
@@ -632,7 +714,7 @@ export class Game {
     if (arrow.flame) {
       const r = (75 + 25 * this.up.flame) * this.scale;
       for (const e of this.enemies) {
-        if (e.dead || e.doomed || e === t) continue;
+        if (e.dead || e.doomed || e.ethereal || e === t) continue;
         const dx = e.x - t.x;
         const dy = e.hitY() - t.hitY();
         if (dx * dx + dy * dy < r * r && e.burnT < 0) {
@@ -640,6 +722,12 @@ export class Game {
           this.audio.ignite();
         }
       }
+    }
+
+    // the boss doesn't die by word count — every landed lash chips his HP
+    if (isBoss) {
+      this.bossLash(t, arrow);
+      return;
     }
 
     if (arrow.bonus) {
@@ -657,6 +745,106 @@ export class Game {
 
     // typed arrow: the word was already consumed at completion time
     if (t.words.length === 0) this.killEnemy(t, arrow);
+  }
+
+  // ------------------------------------------------------------- boss fight
+  countLetterArrows() {
+    let n = 0;
+    for (const e of this.enemies) if (e.type === 'larrow' && !e.dead) n++;
+    return n;
+  }
+
+  countBossTags(boss) {
+    let n = 0;
+    for (const e of this.enemies) {
+      if (e.type === 'bosstag' && !e.dead && e.boss === boss) n++;
+    }
+    return n;
+  }
+
+  // keep 1-3 floating word-tags in the air (4 when enraged)
+  maintainBossTags(boss) {
+    const want = boss.enraged ? 4 : this.diff.boss.tags;
+    if (this.countBossTags(boss) >= want) return;
+    if (!boss.wordQueue.length) return;
+    this.spawnBossTag(boss);
+  }
+
+  spawnBossTag(boss) {
+    const word = boss.wordQueue.shift();
+    if (!word) return;
+    const tag = new Enemy(this, 'bosstag', [word]);
+    tag.boss = boss;
+    this.placeBossTag(tag);
+    this.enemies.push(tag);
+    this.particles.burst(tag.x, tag.y, { color: C.COLORS.bosstag, count: 6, speed: 120, gravity: -30, life: 0.4 });
+    this.audio.runeSpawn();
+  }
+
+  // find a readable spot: mid-air, away from HUD corners and other tags
+  placeBossTag(tag) {
+    let bx = this.w * 0.6;
+    let by = this.h * 0.35;
+    for (let attempt = 0; attempt < 24; attempt++) {
+      bx = this.w * (0.32 + Math.random() * 0.56);
+      by = this.h * (0.16 + Math.random() * 0.42);
+      let ok = true;
+      for (const e of this.enemies) {
+        if (e.type !== 'bosstag' || e === tag || e.dead) continue;
+        if (Math.abs(e.x - bx) < 190 * this.scale && Math.abs(e.baseY - by) < 60 * this.scale) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) break;
+    }
+    tag.x = bx;
+    tag.baseY = by;
+    tag.y = by;
+  }
+
+  spawnLetterArrow(boss) {
+    const banned = this.bannedFirstLetters();
+    const t = this.target;
+    if (t && t.word) {
+      // never steal the letters the player is about to type
+      banned.add(t.word[t.progress]);
+      if (t.word[t.progress + 1]) banned.add(t.word[t.progress + 1]);
+    }
+    const pool = 'abcdefghijklmnopqrstuvwxyz';
+    let letter = pool[(Math.random() * pool.length) | 0];
+    for (let i = 0; i < 40 && banned.has(letter); i++) {
+      letter = pool[(Math.random() * pool.length) | 0];
+    }
+    const d = new Enemy(this, 'larrow', [letter]);
+    d.x = boss.x - 46 * boss.su;
+    d.y = boss.hitY() - 14 * this.scale;
+    d.baseY = d.y;
+    d.enragedBoost = boss.enraged ? 1.25 : 1;
+    this.enemies.push(d);
+    this.audio.bossArrow();
+  }
+
+  // one landed weapon-lash on the demon
+  bossLash(boss, arrow) {
+    boss.hp--;
+    if (!boss.enraged && boss.hp > 0 && boss.hp <= Math.ceil(boss.totalHp / 2)) {
+      boss.enraged = true;
+      this.audio.bossRoar();
+      this.addShake(5);
+      this.slowmo(0.45, 0.4);
+      this.particles.floatText(boss.x, boss.hitY() - 90 * this.scale, 'ENRAGED', {
+        color: '#ff2d55',
+        size: 24,
+        life: 1.4,
+      });
+      this.particles.burst(boss.x, boss.hitY(), { color: '#ff2d55', count: 30, speed: 380, size: 5 });
+      // word-scramble taunt: every floating word tears loose and re-hangs
+      for (const e of this.enemies) {
+        if (e.type === 'bosstag' && !e.dead && e.boss === boss) this.placeBossTag(e);
+      }
+    }
+    if (boss.hp <= 0) this.killEnemy(boss, arrow);
   }
 
   burnTick(e) {
@@ -728,9 +916,9 @@ export class Game {
       this.slowmo(C.SLOWMO_BOSS_DEATH, 1.0);
       this.particles.burst(t.x, t.hitY(), { color: t.color, count: 46, speed: 420, size: 5 });
       this.particles.burst(t.x, t.hitY(), { color: '#ffc14d', count: 30, speed: 320 });
-      // his orbs die with him
+      // his word-storm dies with him
       for (const e of [...this.enemies]) {
-        if (e.type === 'orb') this.vaporize(e, 8);
+        if (e.type === 'orb' || e.type === 'larrow' || e.type === 'bosstag') this.vaporize(e, 8);
       }
     }
   }
@@ -741,14 +929,14 @@ export class Game {
     this.effects.push(fx);
   }
 
-  // supers kill ordinary enemies outright; bosses lose one word instead
+  // supers kill ordinary enemies outright; the boss loses 1 HP instead;
+  // floating boss words are untouchable
   superDamage(e) {
-    if (e.dead) return;
+    if (e.dead || e.ethereal) return;
     if (e.type === 'boss') {
-      if (e.words.length > 0) e.words.pop();
       e.staggerT = 0.35;
       this.particles.burst(e.x, e.hitY(), { color: '#ffdf70', count: 12, speed: 220 });
-      if (e.words.length === 0) this.killEnemy(e, null);
+      this.bossLash(e, null);
       return;
     }
     this.killEnemy(e, null);
@@ -773,7 +961,7 @@ export class Game {
         let best = null;
         let bestD = Infinity;
         for (const e of this.enemies) {
-          if (e.dead || victims.includes(e)) continue;
+          if (e.dead || e.ethereal || victims.includes(e)) continue;
           const d = (e.x - fromX) ** 2 + (e.hitY() - fromY) ** 2;
           if (d < bestD) { bestD = d; best = e; }
         }
@@ -832,7 +1020,7 @@ export class Game {
             this.particles.burst(fx.x, this.groundY - 6, { color: '#ff8c42', count: 10, speed: 200 });
             const r = 75 * this.scale;
             for (const e of this.enemies) {
-              if (e.dead) continue;
+              if (e.dead || e.ethereal) continue;
               const dx = e.x - fx.x;
               const dy = e.hitY() - (this.groundY - 6);
               if (dx * dx + dy * dy < r * r && e.burnT < 0) {
@@ -847,7 +1035,7 @@ export class Game {
           const prevX = fx.x;
           fx.x += (this.w / 1.1) * dt;
           for (const e of [...this.enemies]) {
-            if (e.dead || e.type === 'orb') continue;
+            if (e.dead || e.ethereal || e.type === 'orb' || e.type === 'larrow') continue;
             const nearGround = e.hitY() > this.groundY - 130 * this.scale;
             if (nearGround && e.x > prevX && e.x <= fx.x) this.superDamage(e);
           }
@@ -895,6 +1083,18 @@ export class Game {
           ctx.fillRect(fx.x - 3 * s, fx.y - 12 * s, 6 * s, 7 * s);
           break;
         }
+        case 'tracer': {
+          // interception flash: a bright line from bow to the shot-down dart
+          const a = Math.max(0, fx.t / fx.maxT);
+          ctx.strokeStyle = `rgba(126,232,250,${0.85 * a})`;
+          ctx.lineWidth = 2.5;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(fx.x0, fx.y0);
+          ctx.lineTo(fx.x1, fx.y1);
+          ctx.stroke();
+          break;
+        }
         case 'windblade': {
           const s = this.scale;
           const cy = this.groundY - 55 * s;
@@ -936,6 +1136,11 @@ export class Game {
     if (e.dead) return;
     e.dead = true;
     if (this.target === e) {
+      // same courtesy as killEnemy: a lock that evaporates mid-word
+      // (orb reaching the archer, boss cleanup...) never causes a fumble
+      if (e.word && e.progress > 0) {
+        this.grace = { word: e.word, progress: e.progress, t: 0.8 };
+      }
       this.target = null;
       this.player.setDraw(0);
     }

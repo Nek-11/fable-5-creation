@@ -194,7 +194,7 @@ export class Projectiles {
         p.rot = Math.cos(p.t * 4.6) * 0.35;
         // harmless boop off the first enemy it meets
         for (const e of g.enemies) {
-          if (e.dead) continue;
+          if (e.dead || e.ethereal || e.type === 'larrow') continue;
           if (Math.abs(e.x - p.x) < 22 * g.scale && Math.abs(e.hitY() - p.y) < 44 * e.su) {
             p.bounced = true;
             p.vx = -p.vx * 0.35;

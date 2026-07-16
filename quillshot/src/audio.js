@@ -260,6 +260,20 @@ export class AudioEngine {
     }
   }
 
+  // --- boss fight ---
+
+  // letter-arrow shot out of the sky: a crisp zap
+  intercept() {
+    this.blip(1760, 0.06, 'square', 0.1, 2637);
+    this.noiseBurst(0.06, 5200, 0.1, 'highpass');
+  }
+
+  // the demon looses a letter-arrow
+  bossArrow() {
+    this.noiseBurst(0.16, 1800, 0.14, 'bandpass');
+    this.blip(220, 0.18, 'sawtooth', 0.08, 110);
+  }
+
   // --- power words ---
 
   runeSpawn() {

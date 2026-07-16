@@ -37,12 +37,28 @@ One typo and it all reverts to the bow. The airplane still does nothing.
 | | spawns | speed | words | special |
 |---|---|---|---|---|
 | **EASY** | ×1 | ×1 | normal | the original tuning |
-| **MEDIUM** | ×1.4 | +15% | one tier longer (50%) | flyers/bombers arrive early |
-| **HARD** | ×1.8 | +30% | one tier longer (50%) | two-word enemies, boss every 4 waves |
-| **EXTREME** | ×1.8 | +30% | cipher strings | 0/O · 1/l/I · 5/S · 8/B · 2/Z, **case-sensitive**, typed exactly — sometimes whole punctuated sentences |
+| **MEDIUM** | ×1.4 | +15% | one tier longer (50%) | flyers/bombers arrive early, boss aims to kill |
+| **HARD** | ×1.8 | +30% | one tier longer (55%) | ~45% two-word enemies (next word previews under the tag), boss every 4 waves |
+| **EXTREME** | ×2 | +40% | cipher strings | 0/O · 1/l/I · 5/S · 8/B · 2/Z, **case-sensitive**, typed exactly — sometimes whole punctuated sentences |
+| **IMPOSSIBLE** | ×2 | +40% | cipher strings | EXTREME, but rendered in a font where `0` and `O` are identical. for masochists |
 
-Score multipliers: ×1 / ×1.5 / ×2 / ×3. On EXTREME the word tags render in
-the pixel font, where `0` and `O` are genuinely ambiguous. That's the game.
+Score multipliers: ×1 / ×1.5 / ×2 / ×3 / ×4, with per-mode best scores. On
+EXTREME the cipher tags use a coding font (dotted zero, serifed I, barred 1)
+— brutally hard but readable. IMPOSSIBLE removes that courtesy.
+
+## The Stick King, dethroned and rebuilt
+
+Boss waves play differently from everything else:
+
+- His sentence no longer floats over his head — each word hangs somewhere in
+  the sky as a **rune-tag** (up to three at once), tethered to him. Finish
+  one and your weapon lashes across the field into the demon.
+- He shoots back: **letter-arrows** streak toward you, each tagged with a
+  single letter. Type that letter to snap-shot it out of the air — matching
+  keys always intercept first, so defending never fumbles your streak. A hit
+  costs a heart.
+- Below half HP he **enrages**: faster arrows, four floating words, and the
+  remaining rune-tags tear loose and re-hang somewhere else.
 
 ## Power words
 
@@ -52,17 +68,20 @@ random super attack fires: **chain lightning** through the nearest enemies,
 a two-second **fire rain** over the field, or a **wind blade** that slices
 the entire ground row.
 
-## The horde
+## The horde (monsters, not stickmen)
 
-- **Walker** — ordinary word, ordinary menace.
-- **Runner** — sprints, but only carries a 2–3 letter word.
-- **Brute** — two words, two arrows.
-- **Bomber** — kill it before its fuse ring runs out or it detonates on you
-  from range.
-- **Flyer** — bobs along a sine wave, then swoops.
-- **Runebearer** — golden. Kill for a super attack.
-- **The Stick King** (boss waves) — a whole sentence, word by word, while he
-  hurls typeable projectiles at you.
+Every enemy is a procedurally drawn monster with per-spawn variation — size,
+hue and features jitter so the horde looks alive:
+
+- **Walker** — a shambling one-eyed blob on stubby legs.
+- **Runner** — a skittering spider-imp; short word, many legs.
+- **Brute** — a hulking horned ogre. Two words, two hits.
+- **Bomber** — a round bat lugging a blinking bomb. Kill it before the fuse
+  ring runs out or it detonates on you from range.
+- **Flyer** — a ragged wraith drifting on a sine wave, then swooping.
+- **Runebearer** — a golden robed figure in a ring of runes. Kill for a
+  super attack.
+- **The Stick King** (boss waves) — a horned demon. See above.
 
 ## Boons
 
